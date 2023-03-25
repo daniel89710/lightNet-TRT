@@ -67,7 +67,14 @@ $ mkdir build
 $ cmake ../
 $ make -j
 ```
-															    
+
+## Model	
+| Model | Resolutions | GFLOPS | Params | DNN time on RTX3080 (int8) | DNN time on Jetson Orin NX 16GB GPU | DNN time on Jetson Orin NX 16GB DLA| cfg | weights |
+|---|---|---|---|---|---|---|---|---|
+| lightNet | 1280x960 | 58.01 | 9.0M |  1.3ms |  | | [github](https://github.com/daniel89710/lightNet/blob/master/cfg/lightNet-BDD100K-1280x960.cfg) |[GoogleDrive](https://drive.google.com/file/d/1qTBQ0BkIYqcyu1BwC54_Z9T1_b702HKf/view?usp=sharing) |
+| LightNet+Semseg | 1280x960 | 76.61 | 9.7M | 2.14ms |  |  | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1ttdVtlDiPun13EQCB4Nyls3Q8w5aXg1i/view?usp=sharing)|
+ 	
+* "DNN time" refers to the time measured by IProfiler during the enqueueV2 operation, excluding pre-process and post-process times.
 																
 ## Usage
 
