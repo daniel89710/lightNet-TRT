@@ -71,7 +71,7 @@ $ make -j
 																
 ## Usage
 
-### Converting a lightNet model to a TensorRT engine
+### Converting a LightNet model to a TensorRT engine
 						
 Build FP32 engine
 ```shell
@@ -120,7 +120,7 @@ LightNet-TRT is built on the LightNet framework and integrates with TensorRT usi
 LightNet-TRT is a powerful and efficient implementation of CNNs using Edge AI. With its advanced features and integration with TensorRT, it is an excellent choice for real-time object detection and semantic segmentation applications on edge devices.
 
 # References
-[1]. [lightNet](https://github.com/daniel89710/lightNet)  
+[1]. [LightNet](https://github.com/daniel89710/lightNet)  
 [2]. [TensorRT](https://developer.nvidia.com/tensorrt)  
 [3]. [Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT](https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/)  
 [4]. [NVDLA](http://nvdla.org/)  
