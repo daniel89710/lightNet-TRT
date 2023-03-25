@@ -3,7 +3,7 @@
 LightNet-TRT is a CNN implementation optimized for edge AI devices that combines the advantages of LightNet <sup>[[1]](#references)</sup> and TensorRT <sup>[[2]](#references)</sup>. LightNet is a lightweight and high-performance neural network framework designed for edge devices, while TensorRT is a high-performance deep learning inference engine developed by NVIDIA for optimizing and running deep learning models on GPUs. LightNet-TRT uses the Network Definition API provided by TensorRT to integrate LightNet into TensorRT, allowing it to run efficiently and in real-time on edge devices.
 
 
-
+https://user-images.githubusercontent.com/43815838/227717821-6e0be687-5def-4cf1-902a-ff01332e3206.mp4
 
 
 ## Key Improvements
