@@ -9,7 +9,7 @@ LightNet-TRT is a CNN implementation optimized for edge AI devices that combines
 
 ### 2:4 Structured Sparsity
 
-LightNet-TRT utilizes 2:4 structured sparsity <sup>[[3]](#references)</sup>  to further optimize the network. 2:4 structured sparsity means that every 2x2 block of weights in a convolutional layer is reduced to a single 4-bit value, resulting in a 75% reduction in the number of weights. This technique allows the network to use fewer weights and computations while maintaining accuracy.
+LightNet-TRT utilizes 2:4 structured sparsity <sup>[[3]](#references)</sup>  to further optimize the network. 2:4 structured sparsity means that two values must be zero in each contiguous block of four values, resulting in a 50% reduction in the number of weights. This technique allows the network to use fewer weights and computations while maintaining accuracy.
 
 ![Sparsity](https://developer-blogs.nvidia.com/ja-jp/wp-content/uploads/sites/6/2022/06/2-4-structured-sparse-matrix.png "sparsity")
 
@@ -68,10 +68,10 @@ $ make -j
 ```
 
 ## Model	
-| Model | Resolutions | GFLOPS | Params | Precision | DNN time on RTX3080 | DNN time on Jetson Orin NX 16GB GPU | DNN time on Jetson Orin NX 16GB DLA| cfg | weights |
-|---|---|---|---|---|---|---|---|---|---|
-| lightNet | 1280x960 | 58.01 | 9.0M | int8 | 1.3ms | 7.6ms | 14.2ms | [github](https://github.com/daniel89710/lightNet/blob/master/cfg/lightNet-BDD100K-1280x960.cfg) |[GoogleDrive](https://drive.google.com/file/d/1qTBQ0BkIYqcyu1BwC54_Z9T1_b702HKf/view?usp=sharing) |
-| LightNet+Semseg | 1280x960 | 76.61 | 9.7M | int8 | 2.06ms | 15.3ms | 23.2ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1ttdVtlDiPun13EQCB4Nyls3Q8w5aXg1i/view?usp=sharing)|
+| Model | Resolutions | GFLOPS | Params | Precision | Sparsity | DNN time on RTX3080 | DNN time on Jetson Orin NX 16GB GPU | DNN time on Jetson Orin NX 16GB DLA| cfg | weights |
+|---|---|---|---|---|---|---|---|---|---|---|
+| lightNet | 1280x960 | 58.01 | 9.0M | int8 | 49.8% | 1.3ms | 7.6ms | 14.2ms | [github](https://github.com/daniel89710/lightNet/blob/master/cfg/lightNet-BDD100K-1280x960.cfg) |[GoogleDrive](https://drive.google.com/file/d/1qTBQ0BkIYqcyu1BwC54_Z9T1_b702HKf/view?usp=sharing) |
+| LightNet+Semseg | 1280x960 | 76.61 | 9.7M | int8 | 49.8% | 2.06ms | 15.3ms | 23.2ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1ttdVtlDiPun13EQCB4Nyls3Q8w5aXg1i/view?usp=sharing)|
  	
 * "DNN time" refers to the time measured by IProfiler during the enqueueV2 operation, excluding pre-process and post-process times.
 																
