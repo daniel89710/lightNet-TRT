@@ -38,7 +38,7 @@ LightNet-TRT also supports multitask execution, allowing the network to perform 
 
 ### Requirements
 
--   CUDA11.0 or higher
+-   CUDA 11.0 or higher
 -   TensorRT 8.0 or higher
 -   OpenCV 3.0 or higher
 
