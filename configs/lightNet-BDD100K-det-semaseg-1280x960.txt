@@ -39,4 +39,4 @@
 
 #Support DLA for Xavier/Orin series
 #--dla=[0/1]
---mp=true
+#--mp=true
