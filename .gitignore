@@ -32,6 +32,7 @@ vcpkg_installed/
 *.weights
 *.db
 *.engine
+*calibration.table
 build/*
 build/*.cmake
 build/*.ninja
