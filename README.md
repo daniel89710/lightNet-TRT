@@ -73,8 +73,8 @@ $ make -j
 | lightNet | 1280x960 | 58.01 | 9.0M | int8 | 49.8% | 1.3ms | 7.6ms | 14.2ms | [github](https://github.com/daniel89710/lightNet/blob/master/cfg/lightNet-BDD100K-1280x960.cfg) |[GoogleDrive](https://drive.google.com/file/d/1qTBQ0BkIYqcyu1BwC54_Z9T1_b702HKf/view?usp=sharing) |
 | LightNet+Semseg | 1280x960 | 76.61 | 9.7M | int8 | 49.8% | 2.06ms | 15.3ms | 23.2ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1ttdVtlDiPun13EQCB4Nyls3Q8w5aXg1i/view?usp=sharing)|
  	
-* "DNN time" refers to the time measured by IProfiler during the enqueueV2 operation, excluding pre-process and post-process times.
-																
+ * "DNN time" refers to the time measured by IProfiler during the enqueueV2 operation, excluding pre-process and post-process times.
+ * Orin NX has three independent AI processors, allowing lightNet to be parallelized across a GPU and two DLAs.																
 ## Usage
 
 ### Converting a LightNet model to a TensorRT engine
