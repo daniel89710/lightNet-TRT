@@ -97,7 +97,7 @@ $ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt
 
 Build DLA engine 
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kHALF/kINT8] --dla [0/1]
+$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8 --dla [0/1]
 ```
 
 ### Inference with the TensorRT engine
