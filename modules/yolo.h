@@ -101,7 +101,8 @@ struct TensorInfo
   float* hostBuffer{nullptr};
   bool segmenter{false};
   std::vector<uint32_t> colormap;
-  std::vector<std::string> names;  
+  std::vector<std::string> names;
+  bool depth;
 };
 
 
@@ -125,6 +126,7 @@ public:
 					 const int& imageW);
   std::vector<cv::Mat> apply_argmax(const int& imageIdx);
   std::vector<cv::Mat> get_colorlbl(std::vector<cv::Mat> &argmax);
+  std::vector<cv::Mat> get_depthmap(std::vector<cv::Mat> &argmax) ;  
   uint32_t *get_detection_colormap(void);
   std::vector<std::string> get_detection_names(int id);
   void print_profiling();  

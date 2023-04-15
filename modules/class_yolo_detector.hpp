@@ -118,6 +118,10 @@ public:
 	    save_image(resized, p.string(), name);
 	  }
 	}
+	auto depthmap = _p_net->get_depthmap(segmentation);
+	for (uint32_t j = 0; j < depthmap.size(); j++) {
+	  cv::imshow("depthmap"+std::to_string(j), depthmap[j]);
+	}
       }
       if (i > 0) {
 	GLOBAL_COUNTER++;

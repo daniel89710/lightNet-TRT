@@ -365,18 +365,24 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	    * curYoloTensor.numClasses;
 	  ++outputTensorCount;
 
-	  std::string colormapString = m_configBlocks.at(i).at("colormap");
-	  while (!colormapString.empty()) {
-	    size_t npos = colormapString.find_first_of(',');
-	    if (npos != std::string::npos) {
-	      uint32_t colormap = std::stoi(trim(colormapString.substr(0, npos)));
-	      curYoloTensor.colormap.push_back(colormap);
-	      colormapString.erase(0, npos + 1);
-	    } else {
-	      int colormap = std::stoi(trim(colormapString));
-	      curYoloTensor.colormap.push_back(colormap);
-	      break;
+	  if (m_configBlocks.at(i).find("colormap") != m_configBlocks.at(i).end()) {	  
+	    std::string colormapString = m_configBlocks.at(i).at("colormap");
+	    while (!colormapString.empty()) {
+	      size_t npos = colormapString.find_first_of(',');
+	      if (npos != std::string::npos) {
+		uint32_t colormap = std::stoi(trim(colormapString.substr(0, npos)));
+		curYoloTensor.colormap.push_back(colormap);
+		colormapString.erase(0, npos + 1);
+	      } else {
+		int colormap = std::stoi(trim(colormapString));
+		curYoloTensor.colormap.push_back(colormap);
+		break;
+	      }
 	    }
+	  }
+	  curYoloTensor.depth = false;
+	  if (m_configBlocks.at(i).find("depth") != m_configBlocks.at(i).end()) {
+	    curYoloTensor.depth = true;
 	  }
 	  
 	  ++segmenter_count;
@@ -713,12 +719,13 @@ std::vector<cv::Mat> Yolo::apply_argmax(const int& imageIdx) {
     if (tensor.segmenter) {
       const float* prob = &tensor.hostBuffer[imageIdx * tensor.volume];
       cv::Mat argmax = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC1);
+      int cstart = tensor.depth == true ? 1 : 0;
       //#pragma omp parallel for      
       for (int y = 0; y < tensor.grid_h; y++) {
 	for (int x = 0; x < tensor.grid_w; x++) {
 	  float max = 0.0;
 	  int index = 0;
-	  for (int c = 0; c < tensor.numClasses; c++) {
+	  for (int c = cstart; c < tensor.numClasses; c++) {
 	    float value = prob[c * tensor.grid_h * tensor.grid_w + y * tensor.grid_w + x];
 	    if (max < value) {
 	      max = value;
@@ -738,7 +745,7 @@ std::vector<cv::Mat> Yolo::get_colorlbl(std::vector<cv::Mat> &argmax) {
   std::vector<cv::Mat> segmentation;
   int count = 0;
   for (auto& tensor : m_OutputTensors) {
-    if (tensor.segmenter) {      
+    if (tensor.segmenter && !tensor.depth) {      
       cv::Mat gray = argmax[count];
       cv::Mat mask = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);      
       for (int y = 0; y < tensor.grid_h; y++) {
@@ -751,7 +758,56 @@ std::vector<cv::Mat> Yolo::get_colorlbl(std::vector<cv::Mat> &argmax) {
 	}
       }
       segmentation.push_back(mask);
-      count++;
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+  return segmentation;
+}
+
+
+std::vector<cv::Mat> Yolo::get_depthmap(std::vector<cv::Mat> &argmax) {
+  std::vector<cv::Mat> segmentation;
+  int count = 0;
+
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.segmenter && tensor.depth) {      
+      cv::Mat gray = argmax[count];
+      /*
+      cv::Mat mask = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);      int c = tensor.numClasses;
+      std::cout << c << std::endl;      
+      for (int y = 0; y < tensor.grid_h; y++) {
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  int id = gray.at<unsigned char>(y, x);
+	  mask.at<cv::Vec3b>(y, x)[0] = (unsigned char)(255 * id/(float)c);
+	  mask.at<cv::Vec3b>(y, x)[1] = (unsigned char)(255 * id/(float)c);
+	  mask.at<cv::Vec3b>(y, x)[2] = (unsigned char)(255 * id/(float)c);
+	}
+      }
+      */
+      cv::Mat hsv = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);
+      int c = tensor.numClasses;
+      for (int y = 0; y < tensor.grid_h; y++) {
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  int id = gray.at<unsigned char>(y, x);
+	  float rel = id/(float)c;
+	  int tmp = 120 + 90 * (1.0-rel);
+	  //tmp = tmp > 60.0 ? 60.0 : tmp;
+	  int hue = tmp > 180 ? tmp-180 : tmp;
+	  unsigned char val = 255 - 180 * (1.0-rel);
+	  //hue = hue < 300 ? 0 : hue;
+	  hsv.at<cv::Vec3b>(y, x)[0] = hue;
+	  hsv.at<cv::Vec3b>(y, x)[1] = 255;
+	  hsv.at<cv::Vec3b>(y, x)[2] = val;
+	}
+      }
+      cv::Mat mask;
+      cv::cvtColor(hsv, mask, cv::COLOR_HSV2RGB);
+      segmentation.push_back(mask);
+    }
+    if (tensor.segmenter) {
+	count++;
     }
   }
   return segmentation;
