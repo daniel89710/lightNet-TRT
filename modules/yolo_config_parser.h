@@ -66,4 +66,6 @@ bool
 get_multi_precision_flg(void);
 bool
 get_cuda_flg(void);
+std::string
+get_output_path(void);
 #endif //_YOLO_CONFIG_PARSER_

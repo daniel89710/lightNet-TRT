@@ -43,6 +43,34 @@ write_prediction(std::string dumpPath, std::string filename, std::vector<std::st
   writing_file.close();
 }
 
+void
+write_outputs(std::string outputPath, std::string filename, std::vector<std::string> names, std::vector<Result> objects, int width, int height)
+{
+  int pos = filename.find_last_of(".");
+  std::string body = filename.substr(0, pos);
+  std::string dstName = body + ".txt";
+  std::ofstream writing_file;
+  fs::path p = outputPath;
+  fs::create_directory(p);  
+  p.append(dstName);
+  writing_file.open(p.string(), std::ios::out);  
+  for (const auto & object : objects) {
+    const auto left = object.rect.x;
+    const auto top = object.rect.y;
+    const auto right = std::clamp(left + object.rect.width, 0, width);
+    const auto bottom = std::clamp(top + object.rect.height, 0, height);
+    std::string writing_text = format("%d %f %f %f %f",
+				      object.id,				     
+				      (left+right)/2/(double)width,
+				      (top+bottom)/2/(double)height,
+				      object.rect.width/(double)width,
+				      object.rect.height/(double)height
+				      );
+    writing_file << writing_text << std::endl;
+  }
+  writing_file.close();
+}
+
 
 int main(int argc, char** argv)
 {
@@ -58,6 +86,7 @@ int main(int argc, char** argv)
   std::string save_path = getSaveDetectionsPath();
   bool dont_show = get_dont_show_flg();
   const std::string dumpPath = get_dump_path();
+  const std::string outputPath = get_output_path();  
   const bool cuda = get_cuda_flg();
   Config config;
   config.net_type = YOLOV4;
@@ -97,14 +126,22 @@ int main(int argc, char** argv)
 	batch_img.push_back(src);
       }      
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img);    
+      if (!dont_show) {
+	detector->segment(batch_img);
+      }
 
       if (dumpPath != "not-specified") {
 	fs::path p (file.path());
 	std::string filename = p.filename().string();
 	std::vector<std::string> names = get_names();
 	write_prediction(dumpPath, filename, names, batch_res[0], src.cols, src.rows);
-      }      
+      }
+      if (outputPath != "not-specified") {
+	fs::path p (file.path());
+	std::string filename = p.filename().string();
+	std::vector<std::string> names = get_names();
+	write_outputs(outputPath, filename, names, batch_res[0], src.cols, src.rows);
+      }            
       //disp
       if (dont_show == true) {
 	continue;
@@ -139,7 +176,9 @@ int main(int argc, char** argv)
       std::vector<cv::Mat> batch_img;
       batch_img.push_back(frame);
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img);    
+      if (!dont_show) {
+	detector->segment(batch_img);
+      }
 
       if (dont_show == true) {
 	continue;

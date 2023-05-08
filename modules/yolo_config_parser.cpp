@@ -48,7 +48,7 @@ DEFINE_string(config_file_path1, "not-specified", "[REQUIRED] Darknet cfg file")
 DEFINE_string(wts_file_path1, "not-specified", "[REQUIRED] Darknet weights file");
 DEFINE_string(config_file_path2, "not-specified", "[REQUIRED] Darknet cfg file");
 DEFINE_string(wts_file_path2, "not-specified", "[REQUIRED] Darknet weights file");
-DEFINE_string(labels_file_path, "configs/bdd100k.names", "[REQUIRED] Object class labels file");
+DEFINE_string(labels_file_path, "../configs/bdd100k.names", "[REQUIRED] Object class labels file");
 DEFINE_string(precision, "kFLOAT",
               "[OPTIONAL] Inference precision. Choose from kFLOAT, kHALF and kINT8.");
 DEFINE_string(deviceType, "kGPU",
@@ -93,6 +93,9 @@ DEFINE_bool(prof, false,
 
 DEFINE_string(dump, "not-specified",
               "[OPTIONAL] Path to dump predictions for mAP calculation");
+
+DEFINE_string(output, "not-specified",
+              "[OPTIONAL] Path to output predictions for pseudo-labeling");
 
 DEFINE_bool(mp, false,
             "[OPTIONAL] Flag to multi-precision");
@@ -268,4 +271,10 @@ bool
 get_cuda_flg(void)
 {
   return FLAGS_cuda;
+}
+
+std::string
+get_output_path(void)
+{
+  return FLAGS_output;
 }
