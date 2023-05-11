@@ -347,11 +347,15 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	  std::string softmaxLayerName = "segmenter_" + std::to_string(segmenter_count);
 	  softmax->setName(softmaxLayerName.c_str());
 	  previous = softmax->getOutput(0);
+	  
+
+
 	  previous->setName(softmaxLayerName.c_str());
 	  assert(previous != nullptr);
 	  m_Network->markOutput(*previous);
 	  std::string outputVol = dimsToString(previous->getDimensions());
 	  tensorOutputs.push_back(softmax->getOutput(0));
+	  //tensorOutputs.push_back(previous);	  
 	  printLayerInfo(layerIndex, "segmenter", inputVol, outputVol, "    -");
 
 	  TensorInfo& curYoloTensor = m_OutputTensors.at(outputTensorCount);
@@ -792,9 +796,10 @@ std::vector<cv::Mat> Yolo::get_depthmap(std::vector<cv::Mat> &argmax) {
 	for (int x = 0; x < tensor.grid_w; x++) {
 	  int id = gray.at<unsigned char>(y, x);
 	  float rel = id/(float)c;
-	  int tmp = 120 + 90 * (1.0-rel);
+	  //int tmp = 120 + 90 * (1.0-rel);
 	  //tmp = tmp > 60.0 ? 60.0 : tmp;
-	  int hue = tmp > 180 ? tmp-180 : tmp;
+	  int hue = 120 + 90 * (1.0-rel);
+	  hue = hue > 180 ?  (180-hue) * (-1) : hue;
 	  unsigned char val = 255 - 180 * (1.0-rel);
 	  //hue = hue < 300 ? 0 : hue;
 	  hsv.at<cv::Vec3b>(y, x)[0] = hue;

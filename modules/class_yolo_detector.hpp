@@ -63,7 +63,7 @@ public:
     uint32_t *colormap = _p_net->get_detection_colormap();
     int id = result.id;
     if (colormap) {
-      cv::rectangle(img, result.rect, cv::Scalar(colormap[3*id+2], colormap[3*id+1], colormap[3*id+0]), 2);
+      cv::rectangle(img, result.rect, cv::Scalar(colormap[3*id+2], colormap[3*id+1], colormap[3*id+0]), 4);
     } else {
       cv::rectangle(img, result.rect, cv::Scalar(255, 0, 0), 2);
     }
