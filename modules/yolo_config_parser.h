@@ -39,6 +39,7 @@ NetworkInfo getYoloNetworkInfo1();
 NetworkInfo getYoloNetworkInfo2();
 std::string getDirectoryPath(void);
 std::string getVideoPath(void);
+int getCameraID(void);
 //InferParams getYoloInferParams();
 //uint64_t getSeed();
 //std::string getNetworkType();

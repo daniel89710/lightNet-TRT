@@ -39,6 +39,8 @@ DEFINE_string(v, "",
               "Video Path, "
               "Video Path");
 
+DEFINE_int64(cam_id, -1, "CAMERA_ID");
+
 DEFINE_string(network_type, "not-specified",
               "[REQUIRED] Type of network architecture. Choose from yolov2, yolov2-tiny, "
               "yolov3 and yolov3-tiny");
@@ -187,6 +189,11 @@ std::string getDirectoryPath(void)
 std::string getVideoPath(void)
 {
   return FLAGS_v;
+}
+
+int getCameraID(void)
+{
+  return FLAGS_cam_id;
 }
 
 NetworkInfo getYoloNetworkInfo()
