@@ -146,18 +146,16 @@ int main(int argc, char** argv)
       detector->detect(batch_img, batch_res, cuda);
       detector->segment(batch_img);    
 
-      if (dont_show == true) {
-	continue;
-      }      
       //disp
       for (int i=0;i<batch_img.size();++i) {
 	for (const auto &r : batch_res[i]) {
 	  //	  std::cout <<"batch "<<i<< " id:" << r.id << " prob:" << r.prob << " rect:" << r.rect << std::endl;
 	  detector->draw_BBox(batch_img[i], r);
 	}
-	cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
-	cv::imshow("image"+std::to_string(i), batch_img[i]);
-
+	if (!dont_show) {
+	  cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
+	  cv::imshow("image"+std::to_string(i), batch_img[i]);
+	}
 	if (flg_save) {
 	  std::ostringstream sout;
 	  sout << std::setfill('0') << std::setw(6) << count;	  

@@ -576,7 +576,11 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
     }
     config->setDefaultDeviceType(nvinfer1::DeviceType::kDLA);
     config->setDLACore(m_dla);
+#if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8200          
     config->setFlag(nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+#else
+    config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);
+#endif    
     config->setFlag(nvinfer1::BuilderFlag::kGPU_FALLBACK);  	  
   }    
   if (dataType == nvinfer1::DataType::kINT8)
@@ -584,7 +588,9 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
       assert((calibrator != nullptr) && "Invalid calibrator for INT8 precision");
 
       config->setFlag(nvinfer1::BuilderFlag::kINT8);
+#if (NV_TENSORRT_MAJOR * 1000) + (NV_TENSORRT_MINOR * 100) + NV_TENSOR_PATCH >= 8200                
       config->setFlag(nvinfer1::BuilderFlag::kPREFER_PRECISION_CONSTRAINTS);
+#endif      
       config->setFlag(nvinfer1::BuilderFlag::kSTRICT_TYPES);	
       config->setInt8Calibrator(calibrator);
     }
