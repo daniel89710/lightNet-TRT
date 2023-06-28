@@ -45,9 +45,9 @@ void Detector::save_image(cv::Mat &img, const std::string &dir, const std::strin
   _impl->_detector.save_image(img, dir, name);
 }
 
-void Detector::segment(const std::vector<cv::Mat> &mat_image)
+void Detector::segment(const std::vector<cv::Mat> &mat_image, std::string filename)
 {
-  _impl->_detector.segment(mat_image);
+  _impl->_detector.segment(mat_image, filename);
 }
 
 void Detector::draw_BBox(cv::Mat &img,Result result)

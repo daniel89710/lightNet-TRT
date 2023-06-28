@@ -92,13 +92,16 @@ int main(int argc, char** argv)
     for (const auto & file : std::filesystem::directory_iterator(directory)) {
       std::cout << file.path() << std::endl;
       cv::Mat src = cv::imread(file.path(), cv::IMREAD_UNCHANGED);
+      fs::path p (file.path());
+      std::string name = p.filename().string();
+      
       std::vector<cv::Mat> batch_img;
       //      batch_img.push_back(src);
       for (int b = 0; b < config.batch; b++) {
 	batch_img.push_back(src);
       }      
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img);    
+      detector->segment(batch_img, name);    
 
       if (dumpPath != "not-specified") {
 	fs::path p (file.path());
@@ -119,8 +122,6 @@ int main(int argc, char** argv)
 	cv::imshow("image"+std::to_string(i), batch_img[i]);
 	int k = cv::waitKey(0);
 	if (k == 32) {
-	  fs::path p (file.path());
-	  std::string name = p.filename().string();
 	  std::cout << "Save... " << name << std::endl;
 	  detector->save_image(src, "log/", name);
 	  cv::waitKey(0);
@@ -144,7 +145,7 @@ int main(int argc, char** argv)
       std::vector<cv::Mat> batch_img;
       batch_img.push_back(frame);
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img);    
+      detector->segment(batch_img, "");    
 
       //disp
       for (int i=0;i<batch_img.size();++i) {

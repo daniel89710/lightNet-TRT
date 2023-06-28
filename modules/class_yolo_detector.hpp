@@ -83,7 +83,7 @@ public:
     
   } 
 
-  void segment(const std::vector<cv::Mat> &vec_image)
+  void segment(const std::vector<cv::Mat> &vec_image, std::string filename)
   {
     bool flg_save = getSaveDetections();
     std::string save_path = getSaveDetectionsPath();
@@ -113,9 +113,12 @@ public:
 	    //get filenames;
 	  } else {
 	    std::ostringstream sout;
-	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;	  	cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);	
-	    std::string name = "frame_" + sout.str() + ".png";
-	    save_image(resized, p.string(), name);
+	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	    if (filename == "") {
+	     std::string filename = "frame_" + sout.str() + ".png";
+	    }
+	    save_image(resized, p.string(), filename);
 	  }
 	}
 	auto depthmap = _p_net->get_depthmap(segmentation);

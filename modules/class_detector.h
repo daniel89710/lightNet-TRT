@@ -58,7 +58,7 @@ class API Detector
 
  void init(const Config &config);
  void save_image(cv::Mat &img, const std::string &dir, const std::string &name);
- void segment(const std::vector<cv::Mat> &mat_image);
+ void segment(const std::vector<cv::Mat> &mat_image, std::string filename);
  void detect(const std::vector<cv::Mat> &mat_image, std::vector<BatchResult> &vec_batch_result, const bool cuda);
  void dump_profiling(void);
  void draw_BBox(cv::Mat &img, Result result); 
