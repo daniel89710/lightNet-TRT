@@ -1,4 +1,3 @@
-#include "class_timer.hpp"
 #include "class_detector.h"
 #include "yolo_config_parser.h"
 #include <memory>
