@@ -31,13 +31,41 @@ write_prediction(std::string dumpPath, std::string filename, std::vector<std::st
   fs::path p = dumpPath;
   fs::create_directory(p);  
   p.append(dstName);
-  writing_file.open(p.string(), std::ios::out);  
+  writing_file.open(p.string(), std::ios::out);
   for (const auto & object : objects) {
     const auto left = object.rect.x;
     const auto top = object.rect.y;
     const auto right = std::clamp(left + object.rect.width, 0, width);
     const auto bottom = std::clamp(top + object.rect.height, 0, height);
     std::string writing_text = format("%s %f %d %d %d %d", names[object.id].c_str(), object.prob, left, top, right, bottom);
+    writing_file << writing_text << std::endl;
+  }
+  writing_file.close();
+}
+
+
+void
+write_label(std::string outputPath, std::string filename, std::vector<std::string> names, std::vector<Result> objects, int width, int height)
+{
+  int pos = filename.find_last_of(".");
+  std::string body = filename.substr(0, pos);
+  std::string dstName = body + ".txt";
+  std::ofstream writing_file;
+  fs::path p = outputPath;
+  fs::create_directory(p);  
+  p.append(dstName);
+  writing_file.open(p.string(), std::ios::out);
+  std::cout << "Write" << p.string() << std::endl;
+  for (const auto & object : objects) {
+    const auto left = object.rect.x;
+    const auto top = object.rect.y;
+    const auto right = std::clamp(left + object.rect.width, 0, width);
+    const auto bottom = std::clamp(top + object.rect.height, 0, height);
+    double x = (left + right) / 2.0 / (double)width;
+    double y = (top + bottom) / 2.0 / (double)height;
+    double w = (right - left) / (double)width;
+    double h = (bottom - top) / (double)height;    
+    std::string writing_text = format("%d %f %f %f %f", object.id, x, y, w, h);
     writing_file << writing_text << std::endl;
   }
   writing_file.close();
@@ -60,6 +88,8 @@ int main(int argc, char** argv)
   bool dont_show = get_dont_show_flg();
   const std::string dumpPath = get_dump_path();
   const bool cuda = get_cuda_flg();
+  const std::string target = get_target_label();
+  const std::string outputPath = get_output_path();
   Config config;
   config.net_type = YOLOV4;
   config.file_model_cfg = yoloInfo.configFilePath;//"../configs/yolov7-tiny-relu-BDD100K-960x960-opt-params-mse-sparse.cfg";	
@@ -108,7 +138,27 @@ int main(int argc, char** argv)
 	std::string filename = p.filename().string();
 	std::vector<std::string> names = get_names();
 	write_prediction(dumpPath, filename, names, batch_res[0], src.cols, src.rows);
+      }
+      if (outputPath != "not-specified") {
+	fs::path p (file.path());
+	std::string filename = p.filename().string();
+	std::vector<std::string> names = get_names();
+	write_label(outputPath, filename, names, batch_res[0], src.cols, src.rows);
       }      
+      if (target != "") {
+	std::vector<std::string> names = get_names();
+	for (int i=0;i<batch_img.size();++i) {
+	  for (const auto &r : batch_res[i]) {
+	    int id = r.id;
+	    if (names[id] == target) {
+	      fs::path p = save_path;
+	      p.append("target");
+	      std::cout << "Find " << target << " -> save into " << p.string() << std::endl;
+	      detector->save_image(batch_img[i], p.string(), name);	    
+	    }
+	  }
+	}
+      }
       //disp
       if (dont_show == true) {
 	continue;

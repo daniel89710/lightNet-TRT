@@ -107,6 +107,9 @@ DEFINE_int64(dla2, -1, "[OPTIONAL] DLA");
 DEFINE_bool(cuda, false,
             "[OPTIONAL] Flag to cuda preprcessing");
 
+DEFINE_string(target, "",
+              "[OPTIONAL] Target Finder");
+
 static bool isFlagDefault(std::string flag) { return flag == "not-specified" ? true : false; }
 
 static bool networkTypeValidator(const char* flagName, std::string value)
@@ -284,4 +287,11 @@ std::string
 get_output_path(void)
 {
   return FLAGS_output;
+}
+
+
+std::string
+get_target_label(void)
+{
+  return FLAGS_target;
 }

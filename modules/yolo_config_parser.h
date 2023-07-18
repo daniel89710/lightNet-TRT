@@ -69,4 +69,7 @@ bool
 get_cuda_flg(void);
 std::string
 get_output_path(void);
+std::string
+get_target_label(void);
+
 #endif //_YOLO_CONFIG_PARSER_
