@@ -14,13 +14,10 @@
 
 #include "lightnet_trt_core.hpp"
 
-#include "class_timer.hpp"
-#include "class_detector.h"
-#include "yolo_config_parser.h"
-
 #include "utils.hpp"
 
 #include <rclcpp/logging.hpp>
+#include <cv_bridge/cv_bridge.h>
 
 #include <algorithm>
 #include <functional>
@@ -44,50 +41,45 @@ LightNetTensorRT::LightNetTensorRT()
     std::bind(&LightNetTensorRT::on_image, this, std::placeholders::_1));
 
   NetworkInfo yoloInfo = getYoloNetworkInfo();
-  std::string directory = getDirectoryPath();
-  std::string videoPath = getVideoPath();
+  directory_tmp_ = getDirectoryPath();
   int cam_id = getCameraID();
-  bool flg_save = getSaveDetections();
-  std::string save_path = getSaveDetectionsPath();
-  bool dont_show = get_dont_show_flg();
-  const std::string dumpPath = get_dump_path();
-  const bool cuda = get_cuda_flg();
-  const std::string target = get_target_label();
-  const std::string outputPath = get_output_path();
-  Config config;
-  config.net_type = YOLOV4;
-  config.file_model_cfg = yoloInfo.configFilePath;//"../configs/yolov7-tiny-relu-BDD100K-960x960-opt-params-mse-sparse.cfg";	
-  config.file_model_weights = yoloInfo.wtsFilePath;//"../configs/yolov7-tiny-relu-BDD100K-960x960-opt-params-mse-sparse_last.weights";		
-  config.calibration_image_list_file_txt = "../configs/calibration_images.txt";
+  // bool flg_save = getSaveDetections();
+  cuda_flg_ = get_cuda_flg();
+
+  config_.net_type = YOLOV4;
+  config_.file_model_cfg = yoloInfo.configFilePath;//"../configs/yolov7-tiny-relu-BDD100K-960x960-opt-params-mse-sparse.cfg";	
+  config_.file_model_weights = yoloInfo.wtsFilePath;//"../configs/yolov7-tiny-relu-BDD100K-960x960-opt-params-mse-sparse_last.weights";		
+  config_.calibration_image_list_file_txt = "../configs/calibration_images.txt";
   if (yoloInfo.precision == "kHALF") {
-    config.inference_precison = FP16;
+    config_.inference_precison = FP16;
   }else if (yoloInfo.precision == "kINT8") {
-    config.inference_precison = INT8;    
+    config_.inference_precison = INT8;    
   } else {
-    config.inference_precison = FP32;
+    config_.inference_precison = FP32;
   }
-  config.detect_thresh = (float)get_score_thresh();
-  config.batch =  yoloInfo.batch;
-  config.width =  yoloInfo.width;
-  config.height=  yoloInfo.height;
-  config.dla = yoloInfo.dla;
-  std::unique_ptr<Detector> detector(new Detector());
-  detector->init(config);
-  std::vector<BatchResult> batch_res;
-  if (flg_save) {
-    fs::create_directory(save_path);
-    fs::path p = save_path;
-    p.append("detections");
-    fs::create_directory(p);
-  }
-  
+  config_.detect_thresh = (float)get_score_thresh();
+  config_.batch = yoloInfo.batch;
+  config_.width = yoloInfo.width;
+  config_.height= yoloInfo.height;
+  config_.dla = yoloInfo.dla;
+  detector_ = std::make_unique<Detector>();
+  detector_->init(config_);
 }
 
 
-void LightNetTensorRT::on_image(const sensor_msgs::msg::Image::ConstSharedPtr)
+void LightNetTensorRT::on_image(const sensor_msgs::msg::Image::ConstSharedPtr msg)
 {
   RCLCPP_INFO(this->get_logger(), "Received image");
-  //cv::Mat image = cv_bridge::toCvShare(msg, "bgr8")->image;
-  //cv::imshow("view", image);
-  //cv::waitKey(30);
+  const std::string dummy_name = "";
+
+  cv::Mat src = cv_bridge::toCvShare(msg, "bgr8")->image;
+
+  std::vector<cv::Mat> batch_img;
+  for (int b = 0; b < config_.batch; b++) {
+    batch_img.push_back(src);
+  }
+
+  std::vector<BatchResult> batch_res;
+  detector_->detect(batch_img, batch_res, cuda_flg_);
+  detector_->segment(batch_img, dummy_name);
 }
