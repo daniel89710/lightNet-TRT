@@ -12,24 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LIGHTNET_TRT__LIGHTNET_TRT_CORE_HPP_
-#define LIGHTNET_TRT__LIGHTNET_TRT_CORE_HPP_
+#include "lightnet_trt_node.hpp"
 
-#include "class_detector.h"
-#include "yolo_config_parser.h"
+#include <memory>
 
-#include <opencv2/opencv.hpp>
-
-#include <vector>
-
-class LightNetTensorRT
+int main(int argc, char ** argv)
 {
-public:
-  LightNetTensorRT(const std::string &model_cfg, const std::string &model_weights);
+  rclcpp::init(argc, argv);
+  rclcpp::NodeOptions node_options;
+  auto node = std::make_shared<LightNetTensorRTNode>(node_options);
 
-  bool doInference(std::vector<cv::Mat> images);
+  rclcpp::spin(node);
 
-  std::unique_ptr<Detector> detector_;
-  const bool cuda = false;
-};
-#endif  // LIGHTNET_TRT__LIGHTNET_TRT_CORE_HPP_
+  return 0;
+}

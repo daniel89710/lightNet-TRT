@@ -12,17 +12,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lightnet_trt_core.hpp"
+#include "lightnet_trt_node.hpp"
 
-#include <memory>
-
-int main(int argc, char ** argv)
+LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_options)
+  : Node("tensorrt_lightnet", node_options)
 {
-  rclcpp::init(argc, argv);
-  rclcpp::NodeOptions node_options;
-  auto node = std::make_shared<LightNetTensorRT>();
+  using std::placeholders::_1;
+  using std::chrono_literals::operator""ms;
 
-  rclcpp::spin(node);
+  std::string model_cfg = declare_parameter<std::string>("model_cfg", "");
+  std::string model_weights = declare_parameter<std::string>("model_weights", "");
 
-  return 0;
+  lightnet_trt_ = std::make_unique<LightNetTensorRT>(model_cfg, model_weights);
+
+  image_sub_ = image_transport::create_subscription(
+    this, "~/in/image", std::bind(&LightNetTensorRTNode::onImage, this, _1), "raw",
+    rmw_qos_profile_sensor_data);
+
+  image_pub_ = image_transport::create_publisher(this, "~/out/image");
 }
+
+void LightNetTensorRTNode::onImage(const sensor_msgs::msg::Image::ConstSharedPtr msg)
+{
+  cv_bridge::CvImagePtr in_image_ptr;
+  in_image_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+
+  if (!lightnet_trt_->doInference({in_image_ptr->image}))
+  {
+    RCLCPP_WARN(this->get_logger(), "Inference failed.");
+    return;
+  }
+  image_pub_.publish(in_image_ptr->toImageMsg());
+}
+
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(LightNetTensorRTNode)
