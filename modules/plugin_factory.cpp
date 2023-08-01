@@ -14,6 +14,7 @@ namespace nvinfer1
   YoloLayer::YoloLayer(const void* data, size_t length)
   {
     const char *d = static_cast<const char*>(data), *a = d;
+    (void)a; // Added by Koji Minoda
     re(d, m_NumBoxes);
     re(d, m_NumClasses);
     re(d, _n_grid_h);
@@ -25,6 +26,7 @@ namespace nvinfer1
   void YoloLayer::serialize(void* buffer)const noexcept
   {
     char *d = static_cast<char*>(buffer), *a = d;
+    (void)a; // Added by Koji Minoda
     wr(d, m_NumBoxes);
     wr(d, m_NumClasses);
     wr(d, _n_grid_h);
@@ -176,6 +178,7 @@ namespace nvinfer1
   YoloV4Layer::YoloV4Layer(const void* data, size_t length)
   {
     const char *d = static_cast<const char*>(data), *a = d;
+    (void)a; // Added by Koji Minoda
     re(d, m_NumBoxes);
     re(d, m_NumClasses);
     re(d, _n_grid_h);
@@ -188,6 +191,7 @@ namespace nvinfer1
   void YoloV4Layer::serialize(void* buffer)const noexcept
   {
     char *d = static_cast<char*>(buffer), *a = d;
+    (void)a; // Added by Koji Minoda
     wr(d, m_NumBoxes);
     wr(d, m_NumClasses);
     wr(d, _n_grid_h);
