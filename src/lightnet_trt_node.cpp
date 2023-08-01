@@ -23,7 +23,9 @@ LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_optio
   std::string model_cfg = declare_parameter<std::string>("model_cfg", "");
   std::string model_weights = declare_parameter<std::string>("model_weights", "");
 
+  RCLCPP_INFO(this->get_logger(), "Start loading YOLO");
   lightnet_trt_ = std::make_unique<LightNetTensorRT>(model_cfg, model_weights);
+  RCLCPP_INFO(this->get_logger(), "Finished loading YOLO");
 
   image_sub_ = image_transport::create_subscription(
     this, "~/in/image", std::bind(&LightNetTensorRTNode::onImage, this, _1), "raw",

@@ -42,10 +42,10 @@ bool LightNetTensorRT::doInference(std::vector<cv::Mat> images)
 
   for (int i = 0; i < images.size(); i++)
   {
-      for (const auto &r : batch_res[i])
-      {
-          detector_->draw_BBox(images[i], r);
-      }
+    for (const auto &r : batch_res[i])
+    {
+      detector_->draw_BBox(images[i], r);
+    }
   }
 
   return true;
