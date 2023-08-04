@@ -14,23 +14,10 @@
 
 #include "lightnet_trt_core.hpp"
 
-LightNetTensorRT::LightNetTensorRT(const std::string &model_cfg, const std::string &model_weights)
+LightNetTensorRT::LightNetTensorRT(const ::Config &config)
 {
   const bool cuda = get_cuda_flg();
 
-  // Initialize a detector
-  ::Config config;
-
-  config.net_type = YOLOV4;
-  config.file_model_cfg = model_cfg;
-  config.file_model_weights = model_weights;
-  config.inference_precison = FP32;
-  config.batch = 1;
-  // config.width = 1280;
-  // config.height = 960;
-  config.width = 640;
-  config.height = 640;
-  config.dla = -1;
   detector_ = std::make_unique<::Detector>();
   detector_->init(config);
 }

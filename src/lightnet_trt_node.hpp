@@ -30,6 +30,7 @@ public:
 
 private:
   void onImage(const sensor_msgs::msg::Image::ConstSharedPtr msg);
+  ::Config loadConfig();
 
   image_transport::Publisher image_pub_;
   image_transport::Subscriber image_sub_;

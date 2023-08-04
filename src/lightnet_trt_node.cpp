@@ -20,11 +20,14 @@ LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_optio
   using std::placeholders::_1;
   using std::chrono_literals::operator""ms;
 
-  std::string model_cfg = declare_parameter<std::string>("model_cfg", "");
-  std::string model_weights = declare_parameter<std::string>("model_weights", "");
+  // Initialize a detector
+  ::Config config = loadConfig();
 
   RCLCPP_INFO(this->get_logger(), "Start loading YOLO");
-  lightnet_trt_ = std::make_unique<LightNetTensorRT>(model_cfg, model_weights);
+  RCLCPP_INFO(this->get_logger(), "Model Config: %s", config.file_model_cfg.c_str());
+  RCLCPP_INFO(this->get_logger(), "Model Weights: %s", config.file_model_weights.c_str());
+  RCLCPP_INFO(this->get_logger(), "Input size: (%d, %d)", config.width, config.height);
+  lightnet_trt_ = std::make_unique<LightNetTensorRT>(config);
   RCLCPP_INFO(this->get_logger(), "Finished loading YOLO");
 
   image_sub_ = image_transport::create_subscription(
@@ -34,8 +37,31 @@ LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_optio
   image_pub_ = image_transport::create_publisher(this, "~/out/image");
 }
 
+::Config LightNetTensorRTNode::loadConfig()
+{
+  const std::string model_cfg = declare_parameter<std::string>("model_cfg");
+  const std::string model_weights = declare_parameter<std::string>("model_weights");
+  const int width = declare_parameter<int>("width");
+  const int height = declare_parameter<int>("height");
+
+  // Initialize a detector
+  ::Config config;
+
+  config.net_type = YOLOV4;
+  config.file_model_cfg = model_cfg;
+  config.file_model_weights = model_weights;
+  config.inference_precison = FP32;
+  config.batch = 1;
+  config.width = width;
+  config.height = height;
+  config.dla = -1;
+
+  return config;
+}
+
 void LightNetTensorRTNode::onImage(const sensor_msgs::msg::Image::ConstSharedPtr msg)
 {
+  RCLCPP_INFO(this->get_logger(), "Image received");
   cv_bridge::CvImagePtr in_image_ptr;
   in_image_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
 
@@ -45,6 +71,7 @@ void LightNetTensorRTNode::onImage(const sensor_msgs::msg::Image::ConstSharedPtr
     return;
   }
   image_pub_.publish(in_image_ptr->toImageMsg());
+  RCLCPP_INFO(this->get_logger(), "Inference succeeded");
 }
 
 #include "rclcpp_components/register_node_macro.hpp"

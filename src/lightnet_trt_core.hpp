@@ -25,7 +25,7 @@
 class LightNetTensorRT
 {
 public:
-  LightNetTensorRT(const std::string &model_cfg, const std::string &model_weights);
+  LightNetTensorRT(const ::Config &config);
 
   bool doInference(std::vector<cv::Mat> images);
 
