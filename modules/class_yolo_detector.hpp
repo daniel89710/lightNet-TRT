@@ -78,10 +78,8 @@ public:
       cv::putText(img, stream.str(), cv::Point(result.rect.x, result.rect.y - 5), 0, 0.5, cv::Scalar(colormap[3*id+2], colormap[3*id+1], colormap[3*id+0]), 1);
     } else {
       cv::putText(img, stream.str(), cv::Point(result.rect.x, result.rect.y - 5), 0, 0.5, cv::Scalar(255, 0, 0), 1);
-    }
-
-    
-  } 
+    } 
+  }
 
   void segment(const std::vector<cv::Mat> &vec_image, std::string filename)
   {
@@ -96,43 +94,49 @@ public:
       int width = curImage.cols;
       
       for (uint32_t j = 0; j < mask.size(); j++) {
-	cv::Mat resized;
-	
-	cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);	
-	cv::addWeighted(vec_image[i], 1.0, resized, 0.5, 0.0, vec_image[i]);
-	
-	cv::namedWindow("mask" + std::to_string(j), cv::WINDOW_NORMAL);
-	cv::imshow("mask"+std::to_string(j), mask[j]);
-	if (flg_save) {
-	  fs::path p = save_path;
-	  p.append("segmentation");
-	  fs::create_directory(p);
-	  p.append(std::to_string(j));
-	  fs::create_directory(p);
-	  if (0) {
-	    //get filenames;
-	  } else {
-	    std::ostringstream sout;
-	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
-	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
-	    if (filename == "") {
-	     std::string filename = "frame_" + sout.str() + ".png";
-	    }
-	    save_image(resized, p.string(), filename);
-	  }
-	}
-	auto depthmap = _p_net->get_depthmap(segmentation);
-	for (uint32_t j = 0; j < depthmap.size(); j++) {
-	  cv::imshow("depthmap"+std::to_string(j), depthmap[j]);
-	}
-      }
-      if (i > 0) {
-	GLOBAL_COUNTER++;
-      }
-    }
+				cv::Mat resized;
+				
+				cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);	
+				cv::addWeighted(vec_image[i], 1.0, resized, 0.5, 0.0, vec_image[i]);
+				
+				cv::namedWindow("mask" + std::to_string(j), cv::WINDOW_NORMAL);
+				cv::imshow("mask"+std::to_string(j), mask[j]);
+				if (flg_save) {
+					fs::path p = save_path;
+					p.append("segmentation");
+					fs::create_directory(p);
+					p.append(std::to_string(j));
+					fs::create_directory(p);
+					if (0) {
+						//get filenames;
+					} else {
+						std::ostringstream sout;
+						sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+						//cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+						if (filename == "") {
+							std::string filename = "frame_" + sout.str() + ".png";
+						}
+						save_image(resized, p.string(), filename);
+					}
+				}
+				auto depthmap = _p_net->get_depthmap(segmentation);
+				for (uint32_t j = 0; j < depthmap.size(); j++) {
+					cv::imshow("depthmap"+std::to_string(j), depthmap[j]);
+				}
+			}
+			if (i > 0) {
+				GLOBAL_COUNTER++;
+			}
+		}
     GLOBAL_COUNTER++;
-
   } 
+
+  void get_mask(std::vector<cv::Mat> &mask_results)
+  {
+		auto segmentation = _p_net->apply_argmax(0);
+		mask_results = _p_net->get_colorlbl(segmentation);
+    GLOBAL_COUNTER++;
+  }
 
   void dump_profiling(){
     _p_net->print_profiling();    
