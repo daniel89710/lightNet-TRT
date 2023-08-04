@@ -5,15 +5,15 @@
   <arg name="output/objects" default="/perception/object_recognition/detection/rois0" />
 
   <!-- path to the lightNet-TRT cfg file to be loaded -->
-  <!-- <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg" /> -->
-  <!-- <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.weights" /> -->
-  <!-- <arg name="width" default="1280"/> -->
-  <!-- <arg name="height" default="960"/> -->
+  <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg" />
+  <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.weights" />
+  <arg name="width" default="1280"/>
+  <arg name="height" default="960"/>
 
-  <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls.cfg"/>
-  <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls-scratch-pseudo-finetune_last.weights"/>
-  <arg name="width" default="640"/>
-  <arg name="height" default="640"/>
+  <!-- <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls.cfg"/> -->
+  <!-- <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls-scratch-pseudo-finetune_last.weights"/> -->
+  <!-- <arg name="width" default="640"/> -->
+  <!-- <arg name="height" default="640"/> -->
 
   <group>
     <node pkg="lightnet_trt" exec="lightnet_trt_node" name="lightnet_trt_node">

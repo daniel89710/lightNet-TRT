@@ -30,24 +30,26 @@ target_link_libraries(lightnet_trt ${CUDA_LIBRARIES} ${OpenCV_LIBS} nvinfer nvin
 
 
 # ROS 2 package
-find_package(autoware_cmake REQUIRED)
-autoware_package()
+if(BUILD_ROS2_LIGHTNET_TRT)
+  find_package(autoware_cmake REQUIRED)
+  autoware_package()
 
-# build nodelet
-# TODO
+  # build nodelet
+  # TODO
 
-# build node
-ament_auto_add_executable(lightnet_trt_node
-  src/main.cpp
-  src/lightnet_trt_node.cpp
-  src/lightnet_trt_core.cpp
-)
-ament_target_dependencies(lightnet_trt_node)
-target_include_directories(lightnet_trt_node PRIVATE modules/ extra/)
-target_link_libraries(lightnet_trt_node detector)
-target_link_libraries(lightnet_trt_node ${CUDA_LIBRARIES} ${OpenCV_LIBS} nvinfer nvinfer_plugin nvparsers gflags boost_system boost_filesystem "stdc++fs" "stdc++")
+  # build node
+  ament_auto_add_executable(lightnet_trt_node
+    src/main.cpp
+    src/lightnet_trt_node.cpp
+    src/lightnet_trt_core.cpp
+  )
+  ament_target_dependencies(lightnet_trt_node)
+  target_include_directories(lightnet_trt_node PRIVATE modules/ extra/)
+  target_link_libraries(lightnet_trt_node detector)
+  target_link_libraries(lightnet_trt_node ${CUDA_LIBRARIES} ${OpenCV_LIBS} nvinfer nvinfer_plugin nvparsers gflags boost_system boost_filesystem "stdc++fs" "stdc++")
 
-ament_auto_package(INSTALL_TO_SHARE
-  launch
-  configs
-)
+  ament_auto_package(INSTALL_TO_SHARE
+    launch
+    configs
+  )
+endif()
