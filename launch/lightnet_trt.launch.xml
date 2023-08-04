@@ -1,0 +1,29 @@
+<launch>
+  <!-- image topic name to be subscribed -->
+  <arg name="input/image" default="image_raw" />
+  <!-- output topic name to be published -->
+  <arg name="output/objects" default="/perception/object_recognition/detection/rois0" />
+
+  <!-- path to the lightNet-TRT cfg file to be loaded -->
+  <!-- <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg" /> -->
+  <!-- <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/lightNet-BDD100K-det-semaseg-1280x960.weights" /> -->
+  <!-- <arg name="width" default="1280"/> -->
+  <!-- <arg name="height" default="960"/> -->
+
+  <arg name="model_cfg" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls.cfg"/>
+  <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls-scratch-pseudo-finetune_last.weights"/>
+  <arg name="width" default="640"/>
+  <arg name="height" default="640"/>
+
+  <group>
+    <node pkg="lightnet_trt" exec="lightnet_trt_node" name="lightnet_trt_node">
+      <remap from="~/in/image" to="$(var input/image)"/>
+      <remap from="~/out/image" to="$(var output/objects)/debug/image"/>
+      <param name="model_cfg" value="$(var model_cfg)"/>
+      <param name="model_weights" value="$(var model_weights)"/>
+      <param name="width" value="$(var width)"/>
+      <param name="height" value="$(var height)"/>
+    </node>
+  </group>
+
+</launch>

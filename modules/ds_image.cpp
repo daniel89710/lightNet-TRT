@@ -127,6 +127,7 @@ DsImage::DsImage(const std::string& path, const std::string &s_net_type_, const 
 		int resizeW = ((m_Width / dim) * inputW);
 		m_ScalingFactor = static_cast<float>(resizeH) / static_cast<float>(m_Height);
 		float	m_ScalingFactorw = static_cast<float>(resizeW) / static_cast<float>(m_Width);
+		(void)m_ScalingFactorw; // Added by Koji Minoda
 
 		// Additional checks for images with non even dims
 		if ((inputW - resizeW) % 2) resizeW--;
@@ -169,6 +170,7 @@ void DsImage::letterbox(const int& inputH, const int& inputW)
 	int resizeW = ((m_Width / dim) * inputW);
 	m_ScalingFactor = static_cast<float>(resizeH) / static_cast<float>(m_Height);
 	float	m_ScalingFactorw = static_cast<float>(resizeW) / static_cast<float>(m_Width);
+	(void)m_ScalingFactorw; // Added by Koji Minoda
 
 	// Additional checks for images with non even dims
 	if ((inputW - resizeW) % 2) resizeW--;
