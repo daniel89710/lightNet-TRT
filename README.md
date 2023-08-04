@@ -115,6 +115,24 @@ Inference from images
 $ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kFLOAT/kHALF/kINT8] {--dla [0/1]} --d VIDEO
 ```
 
+### Inference with ROS 2 node
+
+You can build as follows. Note that current implementation requires Autoware installed and sourced.
+
+```bash
+mkdir lightnet_trt_ws/src -p
+cd lightnet_trt_ws/src
+git clone https://github.com/kminoda/lightNet-TRT-ROS2.git
+cd ..
+colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release -DBUILD_ROS2_LIGHTNET_TRT=ON
+```
+
+Then, you can run the node as follows.
+
+```bash
+ros2 launch lightnet_trt lightnet_trt.launch.xml
+```
+
 ## Implementation
 
 LightNet-TRT is built on the LightNet framework and integrates with TensorRT using the Network Definition API. The implementation is based on the following repositories:
