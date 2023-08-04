@@ -15,13 +15,18 @@
 #ifndef LIGHTNET_TRT__LIGHTNET_TRT_NODE_HPP_
 #define LIGHTNET_TRT__LIGHTNET_TRT_NODE_HPP_
 
-#include <image_transport/image_transport.hpp>
-#include <rclcpp/rclcpp.hpp>
 #include "lightnet_trt_core.hpp"
+#include "utils.hpp"
 
-#include <sensor_msgs/msg/image.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <cv_bridge/cv_bridge.h>
+#include <image_transport/image_transport.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
+#include <tier4_autoware_utils/ros/transform_listener.hpp>
+
+#include <optional>
 
 class LightNetTensorRTNode : public rclcpp::Node
 {
@@ -30,10 +35,23 @@ public:
 
 private:
   void onImage(const sensor_msgs::msg::Image::ConstSharedPtr msg);
+  void onCameraInfo(const sensor_msgs::msg::CameraInfo::ConstSharedPtr msg);
   ::Config loadConfig();
 
-  image_transport::Publisher image_pub_;
+  // ROS related variables
   image_transport::Subscriber image_sub_;
+  rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr camera_info_sub_;
+  image_transport::Publisher image_pub_;
+  image_transport::Publisher image_projected_pub_;
+  std::shared_ptr<tier4_autoware_utils::TransformListener> transform_listener_;
+
+  // Tools
   std::unique_ptr<LightNetTensorRT> lightnet_trt_;
+  std::unique_ptr<IPM> ipm_projector_;
+
+  // Misc
+  bool received_camera_info_;
+  const std::string base_frame_;
+  ::Config config_;
 };
 #endif  // LIGHTNET_TRT__LIGHTNET_TRT_NODE_HPP_

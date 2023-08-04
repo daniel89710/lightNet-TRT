@@ -27,7 +27,7 @@ class LightNetTensorRT
 public:
   LightNetTensorRT(const ::Config &config);
 
-  bool doInference(std::vector<cv::Mat> images);
+  void doInference(const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks);
 
   std::unique_ptr<Detector> detector_;
   const bool cuda = false;

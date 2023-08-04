@@ -34,6 +34,8 @@ if(BUILD_ROS2_LIGHTNET_TRT)
   find_package(autoware_cmake REQUIRED)
   autoware_package()
 
+  find_package(Eigen3 REQUIRED)
+
   # build nodelet
   # TODO
 
@@ -42,11 +44,12 @@ if(BUILD_ROS2_LIGHTNET_TRT)
     src/main.cpp
     src/lightnet_trt_node.cpp
     src/lightnet_trt_core.cpp
+    src/utils.cpp
   )
   ament_target_dependencies(lightnet_trt_node)
   target_include_directories(lightnet_trt_node PRIVATE modules/ extra/)
   target_link_libraries(lightnet_trt_node detector)
-  target_link_libraries(lightnet_trt_node ${CUDA_LIBRARIES} ${OpenCV_LIBS} nvinfer nvinfer_plugin nvparsers gflags boost_system boost_filesystem "stdc++fs" "stdc++")
+  target_link_libraries(lightnet_trt_node ${CUDA_LIBRARIES} ${OpenCV_LIBS} Eigen3::Eigen nvinfer nvinfer_plugin nvparsers gflags boost_system boost_filesystem "stdc++fs" "stdc++")
 
   ament_auto_package(INSTALL_TO_SHARE
     launch

@@ -16,6 +16,8 @@
   <depend>cv_bridge</depend>
   <depend>image_transport</depend>
   <depend>rclcpp_components</depend>
+  <depend>tier4_autoware_utils</depend>
+  <depend>tf2_eigen</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>

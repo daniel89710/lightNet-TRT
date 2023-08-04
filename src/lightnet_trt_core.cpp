@@ -22,20 +22,9 @@ LightNetTensorRT::LightNetTensorRT(const ::Config &config)
   detector_->init(config);
 }
 
-bool LightNetTensorRT::doInference(std::vector<cv::Mat> images)
+void LightNetTensorRT::doInference(const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks)
 {
   std::vector<BatchResult> batch_res;
-
   detector_->detect(images, batch_res, cuda);
-  detector_->segment(images, "");
-
-  for (int i = 0; i < images.size(); i++)
-  {
-    for (const auto &r : batch_res[i])
-    {
-      detector_->draw_BBox(images[i], r);
-    }
-  }
-
-  return true;
+  detector_->get_mask(masks);
 }

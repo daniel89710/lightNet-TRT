@@ -168,8 +168,8 @@ int main(int argc, char** argv)
 	  //	  std::cout <<"batch "<<i<< " id:" << r.id << " prob:" << r.prob << " rect:" << r.rect << std::endl;
 	  detector->draw_BBox(batch_img[i], r);
 	}
-	cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
-	cv::imshow("image"+std::to_string(i), batch_img[i]);
+	// cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
+	// cv::imshow("image"+std::to_string(i), batch_img[i]);
 	int k = cv::waitKey(0);
 	if (k == 32) {
 	  std::cout << "Save... " << name << std::endl;
