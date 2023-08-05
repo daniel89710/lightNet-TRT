@@ -16,6 +16,7 @@
   <arg name="model_weights" default="$(find-pkg-share lightnet_trt)/configs/yolov8x-BDD100K-640x640-T4-lane4cls-scratch-pseudo-finetune_last.weights"/>
   <arg name="width" default="640"/>
   <arg name="height" default="640"/>
+  <arg name="param_path" default="$(find-pkg-share lightnet_trt)/ros_config/lightnet_trt.param.yaml"/>
 
   <group>
     <node pkg="lightnet_trt" exec="lightnet_trt_node" name="lightnet_trt_node" output="screen">
@@ -26,6 +27,8 @@
       <param name="model_weights" value="$(var model_weights)"/>
       <param name="width" value="$(var width)"/>
       <param name="height" value="$(var height)"/>
+
+      <param from="$(var param_path)"/>
     </node>
   </group>
 

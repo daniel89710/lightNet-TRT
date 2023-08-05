@@ -21,6 +21,12 @@ LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_optio
 {
   transform_listener_ = std::make_shared<tier4_autoware_utils::TransformListener>(this);
 
+  // Pamareters
+  roi_x_.first = this->declare_parameter<double>("roi_x_min");
+  roi_x_.second = this->declare_parameter<double>("roi_x_max");
+  roi_y_.first = this->declare_parameter<double>("roi_y_min");
+  roi_y_.second = this->declare_parameter<double>("roi_y_max");
+
   // Initialize a detector
   config_ = loadConfig();
 
@@ -76,7 +82,7 @@ void LightNetTensorRTNode::onCameraInfo(const sensor_msgs::msg::CameraInfo::Cons
   if (!tf_base2cam_ptr) return;
 
   const Eigen::Matrix4f extrinsic = tf2::transformToEigen(tf_base2cam_ptr->transform).matrix().cast<float>();
-  ipm_projector_ = std::make_unique<IPM>(intrinsic_resized, extrinsic);
+  ipm_projector_ = std::make_unique<IPM>(intrinsic_resized, extrinsic, roi_x_, roi_y_);
   return;
 }
 

@@ -50,6 +50,8 @@ private:
   std::unique_ptr<IPM> ipm_projector_;
 
   // Misc
+  std::pair<float, float> roi_x_;
+  std::pair<float, float> roi_y_;
   bool received_camera_info_;
   const std::string base_frame_;
   ::Config config_;

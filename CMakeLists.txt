@@ -54,5 +54,6 @@ if(BUILD_ROS2_LIGHTNET_TRT)
   ament_auto_package(INSTALL_TO_SHARE
     launch
     configs
+    ros_config
   )
 endif()

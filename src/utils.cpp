@@ -35,14 +35,24 @@ Eigen::Matrix3f resize_intrinsic_matrix(const Eigen::Matrix3f & intrinsic, const
 }
 
 // TODO: Implement this in a smarter way
-IPM::IPM(const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic)
+IPM::IPM(const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic,
+	const Pair & roi_x, const Pair & roi_y)
 {
+	// manually specified...
+	const float roi_x_size = roi_x.second - roi_x.first;
+	const float roi_y_size = roi_y.second - roi_y.first;
+	if (roi_y_size > roi_x_size) {
+		throw std::runtime_error("roi_y_size > roi_x_size is not supported");
+	}
+	img_height_ = 640;
+	img_width_ = int(img_height_ * roi_y_size / roi_x_size); // assumes that x is longer than y
+
 	// Define points on the ground plane in the world coordinate system
 	// 50 x 20 m rectangle
-	const Eigen::Vector4f dst_p1{55, -10, 0, 1};
-	const Eigen::Vector4f dst_p2{55, 10, 0, 1};
-	const Eigen::Vector4f dst_p3{5, 10, 0, 1};
-	const Eigen::Vector4f dst_p4{5, -10, 0, 1};
+	const Eigen::Vector4f dst_p1{roi_x.second, roi_y.first, 0, 1};
+	const Eigen::Vector4f dst_p2{roi_x.second, roi_y.second, 0, 1};
+	const Eigen::Vector4f dst_p3{roi_x.first, roi_y.second, 0, 1};
+	const Eigen::Vector4f dst_p4{roi_x.first, roi_y.first, 0, 1};
 
 	// Convert the points from the world coordinate system to the camera coordinate system
 	const Eigen::Matrix4f extrinsic_inv = extrinsic.inverse();
@@ -64,11 +74,15 @@ IPM::IPM(const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic)
 		cv::Point2f(src_p3(0), src_p3(1)),
 		cv::Point2f(src_p4(0), src_p4(1))
 	};
+
+	const auto transform_x = [roi_x, roi_x_size, this](const float x) { return (x - roi_x.first) * img_height_ / roi_x_size; };
+	const auto transform_y = [roi_y, roi_y_size, this](const float y) { return (y - roi_y.first) * img_width_ / roi_y_size; };
+
 	const std::vector<cv::Point2f> dst_pts = {
-		cv::Point2f(dst_p3(1) * 12 + 320, dst_p3(0) * 12),
-		cv::Point2f(dst_p4(1) * 12 + 320, dst_p4(0) * 12),
-		cv::Point2f(dst_p1(1) * 12 + 320, dst_p1(0) * 12),
-		cv::Point2f(dst_p2(1) * 12 + 320, dst_p2(0) * 12)
+		cv::Point2f(transform_y(dst_p3(1)), transform_x(dst_p3(0))),
+		cv::Point2f(transform_y(dst_p4(1)), transform_x(dst_p4(0))),
+		cv::Point2f(transform_y(dst_p1(1)), transform_x(dst_p1(0))),
+		cv::Point2f(transform_y(dst_p2(1)), transform_x(dst_p2(0)))
 	};
 
 	perspective_transform_ = cv::getPerspectiveTransform(src_pts, dst_pts);
@@ -76,5 +90,5 @@ IPM::IPM(const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic)
 
 void IPM::run(const cv::Mat & img, cv::Mat & output_img)
 {
-	cv::warpPerspective(img, output_img, perspective_transform_, cv::Size(640, 640));
+	cv::warpPerspective(img, output_img, perspective_transform_, cv::Size(img_width_, img_height_));
 }
