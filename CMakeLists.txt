@@ -1,6 +1,6 @@
 # cmake_minimum_required(VERSION 3.1)
 cmake_minimum_required(VERSION 3.14)
-project(lightnet_trt VERSION 1.0)         
+project(lightnet_trt VERSION 1.0)
 
 enable_language(CUDA) # not supported on CMAKE 3.14
 

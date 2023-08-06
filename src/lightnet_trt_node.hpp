@@ -18,20 +18,21 @@
 #include "lightnet_trt_core.hpp"
 #include "utils.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-
-#include <cv_bridge/cv_bridge.h>
 #include <image_transport/image_transport.hpp>
-#include <sensor_msgs/msg/image.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <tf2_eigen/tf2_eigen.hpp>
 #include <tier4_autoware_utils/ros/transform_listener.hpp>
+
+#include <sensor_msgs/msg/image.hpp>
+
+#include <cv_bridge/cv_bridge.h>
 
 #include <optional>
 
 class LightNetTensorRTNode : public rclcpp::Node
 {
 public:
-  explicit LightNetTensorRTNode(const rclcpp::NodeOptions &node_options);
+  explicit LightNetTensorRTNode(const rclcpp::NodeOptions & node_options);
 
 private:
   void onImage(const sensor_msgs::msg::Image::ConstSharedPtr msg);

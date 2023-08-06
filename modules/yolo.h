@@ -27,23 +27,24 @@ SOFTWARE.
 #define _YOLO_H_
 
 #include "calibrator.h"
-//#include "plugin_factory.h"
-#include "trt_utils.h"
-
+// #include "plugin_factory.h"
 #include "NvInfer.h"
 #include "NvInferPlugin.h"
 #include "NvInferRuntimeCommon.h"
-#include "cuda_runtime_api.h"
-#include <algorithm>
-#include <cmath>
-#include <stdint.h>
-#include <string>
-#include <vector>
 #include "class_timer.hpp"
-#include "opencv2/opencv.hpp"
+#include "cuda_runtime_api.h"
 #include "detect.h"
 #include "logging.h"
+#include "opencv2/opencv.hpp"
 #include "profiler.h"
+#include "trt_utils.h"
+
+#include <stdint.h>
+
+#include <algorithm>
+#include <cmath>
+#include <string>
+#include <vector>
 
 /**
  * Holds all the file paths required to build a network.
@@ -71,13 +72,13 @@ struct NetworkInfo
  */
 struct InferParams
 {
-    bool printPerfInfo;
-    bool printPredictionInfo;
-    std::string calibImages;
-    std::string calibImagesPath;
-    float probThresh;
-    float nmsThresh;
-    bool prof;
+  bool printPerfInfo;
+  bool printPredictionInfo;
+  std::string calibImages;
+  std::string calibImagesPath;
+  float probThresh;
+  float nmsThresh;
+  bool prof;
 };
 
 /**
@@ -90,226 +91,221 @@ struct TensorInfo
   uint32_t stride_h{0};
   uint32_t stride_w{0};
   uint32_t gridSize{0};
-  uint32_t grid_h{ 0 };
-  uint32_t grid_w{ 0 };
+  uint32_t grid_h{0};
+  uint32_t grid_w{0};
   uint32_t numClasses{0};
   uint32_t numBBoxes{0};
   uint64_t volume{0};
   std::vector<uint32_t> masks;
   std::vector<float> anchors;
   int bindingIndex{-1};
-  float* hostBuffer{nullptr};
+  float * hostBuffer{nullptr};
   bool segmenter{false};
   std::vector<uint32_t> colormap;
   std::vector<std::string> names;
   bool depth;
 };
 
-
 class Yolo
 {
 public:
   std::string getNetworkType() const { return m_NetworkType; }
   float getNMSThresh() const { return m_NMSThresh; }
-  std::string getClassName(const int& label) const { return m_ClassNames.at(label); }
-  int getClassId(const int& label) const { return m_ClassIds.at(label); }
+  std::string getClassName(const int & label) const { return m_ClassNames.at(label); }
+  int getClassId(const int & label) const { return m_ClassIds.at(label); }
   uint32_t getInputH() const { return m_InputH; }
   uint32_t getInputW() const { return m_InputW; }
   uint32_t getNumClasses() const { return static_cast<uint32_t>(m_ClassNames.size()); }
   bool isPrintPredictions() const { return m_PrintPredictions; }
   bool isPrintPerfInfo() const { return m_PrintPerfInfo; }
-  void preprocess_gpu(unsigned char *src, int w, int h);
-  void doInference(const unsigned char* input, const uint32_t batchSize);
-  void doProfiling(const unsigned char* input, const uint32_t batchSize);  
-  std::vector<BBoxInfo> decodeDetections(const int& imageIdx,
-					 const int& imageH,
-					 const int& imageW);
-  std::vector<cv::Mat> apply_argmax(const int& imageIdx);
-  std::vector<cv::Mat> get_colorlbl(std::vector<cv::Mat> &argmax);
-  std::vector<cv::Mat> get_depthmap(std::vector<cv::Mat> &argmax) ;  
-  uint32_t *get_detection_colormap(void);
+  void preprocess_gpu(unsigned char * src, int w, int h);
+  void doInference(const unsigned char * input, const uint32_t batchSize);
+  void doProfiling(const unsigned char * input, const uint32_t batchSize);
+  std::vector<BBoxInfo> decodeDetections(
+    const int & imageIdx, const int & imageH, const int & imageW);
+  std::vector<cv::Mat> apply_argmax(const int & imageIdx);
+  std::vector<cv::Mat> get_colorlbl(std::vector<cv::Mat> & argmax);
+  std::vector<cv::Mat> get_depthmap(std::vector<cv::Mat> & argmax);
+  uint32_t * get_detection_colormap(void);
   std::vector<std::string> get_detection_names(int id);
-  void print_profiling();  
-    virtual ~Yolo();
+  void print_profiling();
+  virtual ~Yolo();
 
 protected:
-    Yolo( const NetworkInfo& networkInfo, const InferParams& inferParams);
-    std::string m_EnginePath;
-    const std::string m_NetworkType;
-    const std::string m_ConfigFilePath;
-    const std::string m_WtsFilePath;
-    const std::string m_LabelsFilePath;
-    const std::string m_Precision;
-    const std::string m_DeviceType;
-    const std::string m_CalibImages;
-    const std::string m_CalibImagesFilePath;
-    std::string m_CalibTableFilePath;
-    const std::string m_InputBlobName;
-    std::vector<TensorInfo> m_OutputTensors;
-    std::vector<std::map<std::string, std::string>> m_configBlocks;
-    uint32_t m_InputH;
-    uint32_t m_InputW;
-    uint32_t m_InputC;
-    uint64_t m_InputSize;
-	uint32_t _n_classes = 0;
-	float _f_depth_multiple = 0;
-	float _f_width_multiple = 0;
-    const float m_ProbThresh;
-    const float m_NMSThresh;
-    std::vector<std::string> m_ClassNames;
-    // Class ids for coco benchmarking
-    const std::vector<int> m_ClassIds{
-        1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 13, 14, 15, 16, 17, 18, 19, 20, 21,
-        22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44,
-        46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65,
-        67, 70, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90};
-    const bool m_PrintPerfInfo;
-    const bool m_PrintPredictions;
-    // TRT specific members
-	//Logger glogger;
-    uint32_t m_BatchSize = 1;
-    nvinfer1::INetworkDefinition* m_Network;
-    nvinfer1::IBuilder* m_Builder ;
-    nvinfer1::IHostMemory* m_ModelStream;
-    nvinfer1::ICudaEngine* m_Engine;
-    nvinfer1::IExecutionContext* m_Context;
-    std::vector<void*> m_DeviceBuffers;
-    int m_InputBindingIndex;
-    cudaStream_t m_CudaStream;
+  Yolo(const NetworkInfo & networkInfo, const InferParams & inferParams);
+  std::string m_EnginePath;
+  const std::string m_NetworkType;
+  const std::string m_ConfigFilePath;
+  const std::string m_WtsFilePath;
+  const std::string m_LabelsFilePath;
+  const std::string m_Precision;
+  const std::string m_DeviceType;
+  const std::string m_CalibImages;
+  const std::string m_CalibImagesFilePath;
+  std::string m_CalibTableFilePath;
+  const std::string m_InputBlobName;
+  std::vector<TensorInfo> m_OutputTensors;
+  std::vector<std::map<std::string, std::string>> m_configBlocks;
+  uint32_t m_InputH;
+  uint32_t m_InputW;
+  uint32_t m_InputC;
+  uint64_t m_InputSize;
+  uint32_t _n_classes = 0;
+  float _f_depth_multiple = 0;
+  float _f_width_multiple = 0;
+  const float m_ProbThresh;
+  const float m_NMSThresh;
+  std::vector<std::string> m_ClassNames;
+  // Class ids for coco benchmarking
+  const std::vector<int> m_ClassIds{1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 13, 14, 15, 16, 17,
+                                    18, 19, 20, 21, 22, 23, 24, 25, 27, 28, 31, 32, 33, 34, 35, 36,
+                                    37, 38, 39, 40, 41, 42, 43, 44, 46, 47, 48, 49, 50, 51, 52, 53,
+                                    54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 67, 70, 72, 73,
+                                    74, 75, 76, 77, 78, 79, 80, 81, 82, 84, 85, 86, 87, 88, 89, 90};
+  const bool m_PrintPerfInfo;
+  const bool m_PrintPredictions;
+  // TRT specific members
+  // Logger glogger;
+  uint32_t m_BatchSize = 1;
+  nvinfer1::INetworkDefinition * m_Network;
+  nvinfer1::IBuilder * m_Builder;
+  nvinfer1::IHostMemory * m_ModelStream;
+  nvinfer1::ICudaEngine * m_Engine;
+  nvinfer1::IExecutionContext * m_Context;
+  std::vector<void *> m_DeviceBuffers;
+  int m_InputBindingIndex;
+  cudaStream_t m_CudaStream;
 
-    SimpleProfiler m_model_profiler;
-    SimpleProfiler m_host_profiler;
-    int m_dla;
-    unsigned char* m_h_img;
-    unsigned char* m_d_img;
-  
-    //PluginFactory* m_PluginFactory;
-   // std::unique_ptr<YoloTinyMaxpoolPaddingFormula> m_TinyMaxpoolPaddingFormula;
+  SimpleProfiler m_model_profiler;
+  SimpleProfiler m_host_profiler;
+  int m_dla;
+  unsigned char * m_h_img;
+  unsigned char * m_d_img;
 
-    virtual std::vector<BBoxInfo> decodeTensor(const int imageIdx, const int imageH,
-                                               const int imageW, const TensorInfo& tensor)
-        = 0;
+  // PluginFactory* m_PluginFactory;
+  // std::unique_ptr<YoloTinyMaxpoolPaddingFormula> m_TinyMaxpoolPaddingFormula;
 
-    inline void addBBoxProposal(const float bx, const float by, const float bw, const float bh,
-                                const uint32_t stride, const float scalingFactor, const float xOffset,
-                                const float yOffset, const int maxIndex, const float maxProb,
-		const uint32_t 	image_w, const uint32_t image_h,
-                                std::vector<BBoxInfo>& binfo)
-    {
-        BBoxInfo bbi;
-        bbi.box = convertBBoxNetRes(bx, by, bw, bh, stride, m_InputW, m_InputH);
-        if ((bbi.box.x1 > bbi.box.x2) || (bbi.box.y1 > bbi.box.y2))
-        {
-            return;
-        }
-      //  convertBBoxImgRes(scalingFactor, m_InputW,m_InputH,image_w,image_h, bbi.box);
-        bbi.label = maxIndex;
-        bbi.prob = maxProb;
-        bbi.classId = getClassId(maxIndex);
-        binfo.push_back(bbi);
+  virtual std::vector<BBoxInfo> decodeTensor(
+    const int imageIdx, const int imageH, const int imageW, const TensorInfo & tensor) = 0;
+
+  inline void addBBoxProposal(
+    const float bx, const float by, const float bw, const float bh, const uint32_t stride,
+    const float scalingFactor, const float xOffset, const float yOffset, const int maxIndex,
+    const float maxProb, const uint32_t image_w, const uint32_t image_h,
+    std::vector<BBoxInfo> & binfo)
+  {
+    BBoxInfo bbi;
+    bbi.box = convertBBoxNetRes(bx, by, bw, bh, stride, m_InputW, m_InputH);
+    if ((bbi.box.x1 > bbi.box.x2) || (bbi.box.y1 > bbi.box.y2)) {
+      return;
+    }
+    //  convertBBoxImgRes(scalingFactor, m_InputW,m_InputH,image_w,image_h, bbi.box);
+    bbi.label = maxIndex;
+    bbi.prob = maxProb;
+    bbi.classId = getClassId(maxIndex);
+    binfo.push_back(bbi);
+  }
+
+  void calcuate_letterbox_message(
+    const int m_InputH, const int m_InputW, const int imageH, const int imageW, float & sh,
+    float & sw, int & xOffset, int & yOffset)
+  {
+    float r = std::min(
+      static_cast<float>(m_InputH) / static_cast<float>(imageH),
+      static_cast<float>(m_InputW) / static_cast<float>(imageW));
+    int resizeH = (std::round(imageH * r));
+    int resizeW = (std::round(imageW * r));
+
+    sh = r;
+    sw = r;
+    if ((m_InputW - resizeW) % 2) resizeW--;
+    if ((m_InputH - resizeH) % 2) resizeH--;
+    assert((m_InputW - resizeW) % 2 == 0);
+    assert((m_InputH - resizeH) % 2 == 0);
+    xOffset = (m_InputW - resizeW) / 2;
+    yOffset = (m_InputH - resizeH) / 2;
+  }
+  BBox convert_bbox_res(
+    const float & bx, const float & by, const float & bw, const float & bh,
+    const uint32_t & stride_h_, const uint32_t & stride_w_, const uint32_t & netW,
+    const uint32_t & netH)
+  {
+    BBox b;
+    // Restore coordinates to network input resolution
+    float x = bx * stride_w_;
+    float y = by * stride_h_;
+
+    b.x1 = x - bw / 2;
+    b.x2 = x + bw / 2;
+
+    b.y1 = y - bh / 2;
+    b.y2 = y + bh / 2;
+
+    b.x1 = clamp(b.x1, 0, netW);
+    b.x2 = clamp(b.x2, 0, netW);
+    b.y1 = clamp(b.y1, 0, netH);
+    b.y2 = clamp(b.y2, 0, netH);
+
+    return b;
+  }
+
+  inline void cvt_box(
+    const float sh, const float sw, const float xOffset, const float yOffset, BBox & bbox)
+  {
+    //// Undo Letterbox
+    bbox.x1 -= xOffset;
+    bbox.x2 -= xOffset;
+    bbox.y1 -= yOffset;
+    bbox.y2 -= yOffset;
+    //// Restore to input resolution
+    bbox.x1 /= sw;
+    bbox.x2 /= sw;
+    bbox.y1 /= sh;
+    bbox.y2 /= sh;
+  }
+
+  inline void add_bbox_proposal(
+    const float bx, const float by, const float bw, const float bh, const uint32_t stride_h_,
+    const uint32_t stride_w_, const float scaleH, const float scaleW, const float xoffset_,
+    const float yoffset, const int maxIndex, const float maxProb, const uint32_t image_w,
+    const uint32_t image_h, std::vector<BBoxInfo> & binfo)
+  {
+    BBoxInfo bbi;
+    bbi.box = convert_bbox_res(bx, by, bw, bh, stride_h_, stride_w_, m_InputW, m_InputH);
+    if ((bbi.box.x1 > bbi.box.x2) || (bbi.box.y1 > bbi.box.y2)) {
+      return;
+    }
+    if ("yolov5" == m_NetworkType) {
+      cvt_box(scaleH, scaleW, xoffset_, yoffset, bbi.box);
+    } else {
+      bbi.box.x1 = ((float)bbi.box.x1 / (float)m_InputW) * (float)image_w;
+      bbi.box.y1 = ((float)bbi.box.y1 / (float)m_InputH) * (float)image_h;
+      bbi.box.x2 = ((float)bbi.box.x2 / (float)m_InputW) * (float)image_w;
+      bbi.box.y2 = ((float)bbi.box.y2 / (float)m_InputH) * (float)image_h;
     }
 
-	void calcuate_letterbox_message(const int m_InputH, const int m_InputW,
-		const int imageH, const int imageW,
-		float &sh,float &sw,
-		int &xOffset,int &yOffset)
-	{
-        float r = std::min(static_cast<float>(m_InputH) / static_cast<float>(imageH), static_cast<float>(m_InputW) / static_cast<float>(imageW));
-        int resizeH = (std::round(imageH*r));
-        int resizeW = (std::round(imageW*r));
-
-		sh = r;
-		sw = r;
-		if ((m_InputW - resizeW) % 2) resizeW--;
-		if ((m_InputH - resizeH) % 2) resizeH--;
-		assert((m_InputW - resizeW) % 2 == 0);
-		assert((m_InputH - resizeH) % 2 == 0);
-		xOffset = (m_InputW - resizeW) / 2;
-		 yOffset = (m_InputH - resizeH) / 2;
-	}
-	BBox convert_bbox_res(const float& bx, const float& by, const float& bw, const float& bh,
-		const uint32_t& stride_h_, const uint32_t& stride_w_, const uint32_t& netW, const uint32_t& netH)
-	{
-		BBox b;
-		// Restore coordinates to network input resolution
-		float x = bx * stride_w_;
-		float y = by * stride_h_;
-
-		b.x1 = x - bw / 2;
-		b.x2 = x + bw / 2;
-
-		b.y1 = y - bh / 2;
-		b.y2 = y + bh / 2;
-
-		b.x1 = clamp(b.x1, 0, netW);
-		b.x2 = clamp(b.x2, 0, netW);
-		b.y1 = clamp(b.y1, 0, netH);
-		b.y2 = clamp(b.y2, 0, netH);
-
-		return b;
-	}
-
-	inline void cvt_box(const float sh,
-		const float sw,
-		const float xOffset,
-		const float yOffset,
-		BBox& bbox)
-	{
-		//// Undo Letterbox
-		bbox.x1 -= xOffset;
-		bbox.x2 -= xOffset;
-		bbox.y1 -= yOffset;
-		bbox.y2 -= yOffset;
-		//// Restore to input resolution
-		bbox.x1 /= sw;
-		bbox.x2 /= sw;
-		bbox.y1 /= sh;
-		bbox.y2 /= sh;
-	}
-
-	inline void add_bbox_proposal(const float bx, const float by, const float bw, const float bh,
-		const uint32_t stride_h_, const uint32_t stride_w_, const float scaleH, const float scaleW, const float xoffset_, const float yoffset, const int maxIndex, const float maxProb,
-		const uint32_t 	image_w, const uint32_t image_h,
-		std::vector<BBoxInfo>& binfo)
-	{
-		BBoxInfo bbi;
-		bbi.box = convert_bbox_res(bx, by, bw, bh, stride_h_, stride_w_, m_InputW, m_InputH);
-		if ((bbi.box.x1 > bbi.box.x2) || (bbi.box.y1 > bbi.box.y2))
-		{
-			return;
-		}
-		if ("yolov5" == m_NetworkType)
-		{
-			cvt_box(scaleH, scaleW, xoffset_, yoffset, bbi.box);
-		}
-		else
-		{
-			bbi.box.x1 = ((float)bbi.box.x1 / (float)m_InputW)*(float)image_w;
-			bbi.box.y1 = ((float)bbi.box.y1 / (float)m_InputH)*(float)image_h;
-			bbi.box.x2 = ((float)bbi.box.x2 / (float)m_InputW)*(float)image_w;
-			bbi.box.y2 = ((float)bbi.box.y2 / (float)m_InputH)*(float)image_h;
-		}
-		
-		bbi.label = maxIndex;
-		bbi.prob = maxProb;
-		bbi.classId = getClassId(maxIndex);
-		binfo.push_back(bbi);
-	};
-private:
-    Logger m_Logger;
-    void createYOLOEngine(const nvinfer1::DataType dataType = nvinfer1::DataType::kFLOAT,
-                          Int8EntropyCalibrator* calibrator = nullptr);
-    std::vector<std::map<std::string, std::string>> parseConfigFile(const std::string cfgFilePath);
-    void parseConfigBlocks();
-    void allocateBuffers();
-    bool verifyYoloEngine();
-    void destroyNetworkUtils(std::vector<nvinfer1::Weights>& trtWeights);
-    void writePlanFileToDisk();
+    bbi.label = maxIndex;
+    bbi.prob = maxProb;
+    bbi.classId = getClassId(maxIndex);
+    binfo.push_back(bbi);
+  };
 
 private:
-	Timer _timer;
+  Logger m_Logger;
+  void createYOLOEngine(
+    const nvinfer1::DataType dataType = nvinfer1::DataType::kFLOAT,
+    Int8EntropyCalibrator * calibrator = nullptr);
+  std::vector<std::map<std::string, std::string>> parseConfigFile(const std::string cfgFilePath);
+  void parseConfigBlocks();
+  void allocateBuffers();
+  bool verifyYoloEngine();
+  void destroyNetworkUtils(std::vector<nvinfer1::Weights> & trtWeights);
+  void writePlanFileToDisk();
 
-	int _n_yolo_ind = 0;
+private:
+  Timer _timer;
+
+  int _n_yolo_ind = 0;
 };
 
-#endif // _YOLO_H_
+#endif  // _YOLO_H_

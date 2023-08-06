@@ -25,7 +25,7 @@
 class LightNetTensorRT
 {
 public:
-  LightNetTensorRT(const ::Config &config);
+  LightNetTensorRT(const ::Config & config);
 
   void doInference(const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks);
 
