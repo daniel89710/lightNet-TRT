@@ -66,7 +66,6 @@ public:
       std::time_t timestamp = std::time(nullptr);
       tm * tm_local = std::localtime(&timestamp);
 
-      (void)tm_local;  // Added by Koji Minoda
                        /*
                        std::cout << "[";
                        std::cout << std::setw(2) << std::setfill('0') << 1 + tm_local->tm_mon << "/";

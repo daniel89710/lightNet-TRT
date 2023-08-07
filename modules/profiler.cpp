@@ -42,7 +42,6 @@ void SimpleProfiler::setProfDict(nvinfer1::ILayer * layer) noexcept
 {
   std::string name = layer->getName();
   auto t = layer->getType();
-  (void)t;  // Added by Koji Minoda
   m_layer_dict[name];
   m_layer_dict[name].type = layer->getType();
   if (layer->getType() == nvinfer1::LayerType::kCONVOLUTION) {
