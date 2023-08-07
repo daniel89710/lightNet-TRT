@@ -15,27 +15,30 @@
 #ifndef LIGHTNET_TRT__UTILS_HPP_
 #define LIGHTNET_TRT__UTILS_HPP_
 
-#include <opencv2/opencv.hpp>
-
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <opencv2/opencv.hpp>
 
-#include "sensor_msgs/msg/camera_info.hpp"
 #include "geometry_msgs/msg/transform.hpp"
+#include "sensor_msgs/msg/camera_info.hpp"
 
 #include <utility>
 
 Eigen::Matrix3f get_intrinsic_matrix(const sensor_msgs::msg::CameraInfo & camera_info);
-Eigen::Matrix3f resize_intrinsic_matrix(const Eigen::Matrix3f & intrinsic, const int resized_width, const int resized_height);
+Eigen::Matrix3f resize_intrinsic_matrix(
+  const Eigen::Matrix3f & intrinsic, const int resized_width, const int resized_height);
 
 class IPM
 {
 private:
   using Pair = std::pair<float, float>;
+
 public:
-  IPM(const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic,
-	  const Pair & roi_x, const Pair & roi_y);
+  IPM(
+    const Eigen::Matrix3f & intrinsic, const Eigen::Matrix4f & extrinsic, const Pair & roi_x,
+    const Pair & roi_y);
   void run(const cv::Mat & img, cv::Mat & output_img);
+
 private:
   cv::Mat perspective_transform_;
   int img_width_;

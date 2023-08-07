@@ -14,7 +14,11 @@
 
 #include "lightnet_trt_core.hpp"
 
-LightNetTensorRT::LightNetTensorRT(const ::Config &config)
+#include <memory>
+#include <string>
+#include <vector>
+
+LightNetTensorRT::LightNetTensorRT(const ::Config & config)
 {
   const bool cuda = get_cuda_flg();
 
@@ -22,7 +26,8 @@ LightNetTensorRT::LightNetTensorRT(const ::Config &config)
   detector_->init(config);
 }
 
-void LightNetTensorRT::doInference(const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks)
+void LightNetTensorRT::doInference(
+  const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks)
 {
   std::vector<BatchResult> batch_res;
   detector_->detect(images, batch_res, cuda);

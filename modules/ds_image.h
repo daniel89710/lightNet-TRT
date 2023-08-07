@@ -22,46 +22,56 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 *
 */
-#ifndef __IMAGE_H__
-#define __IMAGE_H__
+#ifndef __LIGHTNET_TRT__DS_IMAGE_H__
+#define __LIGHTNET_TRT__DS_IMAGE_H__
 
 #include "trt_utils.h"
+
+#include <opencv2/opencv.hpp>
+
+#include <string>
+#include <vector>
 
 struct BBoxInfo;
 
 class DsImage
 {
 public:
-    DsImage();
-    DsImage(const std::string& path, const std::string &s_net_type_, const int& inputH, const int& inputW);
-    DsImage(const cv::Mat& mat_image_, const std::string &s_net_type_, const int& inputH, const int& inputW);
-    int getImageHeight() const { return m_Height; }
-    int getImageWidth() const { return m_Width; }
-    cv::Mat getLetterBoxedImage() const { return m_LetterboxImage; }
-    cv::Mat getOriginalImage() const { return m_OrigImage; }
-    std::string getImageName() const { return m_ImageName; }
-    void addBBox(BBoxInfo box, const std::string& labelName);
-    void showImage() const;
-    void saveImageJPEG(const std::string& dirPath) const;
-    std::string exportJson() const;
-	void letterbox(const int& inputH, const int& inputW);
-private:
-    int m_Height;
-    int m_Width;
-    int m_XOffset;
-    int m_YOffset;
-    float m_ScalingFactor;
-    std::string m_ImagePath;
-    cv::RNG m_RNG;
-    std::string m_ImageName;
-    std::vector<BBoxInfo> m_Bboxes;
+  DsImage();
+  DsImage(
+    const std::string & path, const std::string & s_net_type_, const int & inputH,
+    const int & inputW);
+  DsImage(
+    const cv::Mat & mat_image_, const std::string & s_net_type_, const int & inputH,
+    const int & inputW);
+  int getImageHeight() const { return m_Height; }
+  int getImageWidth() const { return m_Width; }
+  cv::Mat getLetterBoxedImage() const { return m_LetterboxImage; }
+  cv::Mat getOriginalImage() const { return m_OrigImage; }
+  std::string getImageName() const { return m_ImageName; }
+  void addBBox(BBoxInfo box, const std::string & labelName);
+  void showImage() const;
+  void saveImageJPEG(const std::string & dirPath) const;
+  std::string exportJson() const;
+  void letterbox(const int & inputH, const int & inputW);
 
-    // unaltered original Image
-    cv::Mat m_OrigImage;
-    // letterboxed Image given to the network as input
-    cv::Mat m_LetterboxImage;
-    // final image marked with the bounding boxes
-    cv::Mat m_MarkedImage;
+private:
+  int m_Height;
+  int m_Width;
+  int m_XOffset;
+  int m_YOffset;
+  float m_ScalingFactor;
+  std::string m_ImagePath;
+  cv::RNG m_RNG;
+  std::string m_ImageName;
+  std::vector<BBoxInfo> m_Bboxes;
+
+  // unaltered original Image
+  cv::Mat m_OrigImage;
+  // letterboxed Image given to the network as input
+  cv::Mat m_LetterboxImage;
+  // final image marked with the bounding boxes
+  cv::Mat m_MarkedImage;
 };
 
-#endif
+#endif  // __LIGHTNET_TRT__DS_IMAGE_H__

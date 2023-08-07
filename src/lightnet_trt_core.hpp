@@ -20,12 +20,13 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <memory>
 #include <vector>
 
 class LightNetTensorRT
 {
 public:
-  LightNetTensorRT(const ::Config &config);
+  explicit LightNetTensorRT(const ::Config & config);
 
   void doInference(const std::vector<cv::Mat> & images, std::vector<cv::Mat> & masks);
 
