@@ -45,43 +45,43 @@ LightNet-TRT also supports multitask execution, allowing the network to perform 
 ### Steps
 
 1.  Clone the repository.
-
+    
 ```shell
 $ git clone https://github.com/daniel89710/lightNet-TRT.git
 $ cd lightNet-TRT
 ```
-
+	
 2.  Install libraries.
-
+						    
 ```shell
 $ sudo apt update
 $ sudo apt install libgflags-dev
 $ sudo apt install libboost-all-dev
 ```
-
+										    
 3.  Compile the TensorRT implementation.
-
+											    
 ```shell
 $ mkdir build
 $ cmake ../
 $ make -j
 ```
 
-## Model
+## Model	
 | Model | Resolutions | GFLOPS | Params | Precision | Sparsity | DNN time on RTX3080 | DNN time on Jetson Orin NX 16GB GPU | DNN time on Jetson Orin NX 16GB DLA| DNN time on Jetson Orin Nano 4GB GPU | cfg | weights |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | lightNet | 1280x960 | 58.01 | 9.0M | int8 | 49.8% | 1.30ms | 7.6ms | 14.2ms | 14.9ms | [github](https://github.com/daniel89710/lightNet/blob/master/cfg/lightNet-BDD100K-1280x960.cfg) |[GoogleDrive](https://drive.google.com/file/d/1qTBQ0BkIYqcyu1BwC54_Z9T1_b702HKf/view?usp=sharing) |
 | LightNet+Semseg | 1280x960 | 76.61 | 9.7M | int8 | 49.8% | 2.06ms | 15.3ms | 23.2ms | 26.2ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1ttdVtlDiPun13EQCB4Nyls3Q8w5aXg1i/view?usp=sharing)|
 | lightNet pruning | 1280x960 | 35.03 | 4.3M | int8 | 49.8% | 1.21ms | 8.89ms | 11.68ms | 13.75ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-1280x960-chPruning.cfg) |[GoogleDrive](https://drive.google.com/file/d/1OGZApPeNH7K08-89eJ8tGhzA9kkRFLii/view?usp=sharing) |
 | LightNet pruning +SemsegLight | 1280x960 | 44.35 | 4.9M | int8 | 49.8% | 1.80ms | 9.89ms | 15.26ms | 23.35ms | [github](https://github.com/daniel89710/lightNet-TRT/blob/main/configs/lightNet-BDD100K-chPruning-det-semaseg-1280x960.cfg) | [GoogleDrive](https://drive.google.com/file/d/1dytYnqS4h_5YK73tr6DOZTUYUEKZYsFe/view?usp=drive_link)|
-
+ 	
  * "DNN time" refers to the time measured by IProfiler during the enqueueV2 operation, excluding pre-process and post-process times.
- * Orin NX has three independent AI processors, allowing lightNet to be parallelized across a GPU and two DLAs.
+ * Orin NX has three independent AI processors, allowing lightNet to be parallelized across a GPU and two DLAs.																
  * Orin Nano 4GB has only iGPU with 512 CUDA cores.
 ## Usage
 
 ### Converting a LightNet model to a TensorRT engine
-
+						
 Build FP32 engine
 ```shell
 $ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kFLOAT
@@ -92,7 +92,7 @@ Build FP16(HALF) engine
 $ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kHALF
 ```
 
-Build INT8 engine
+Build INT8 engine 
 (You need to prepare a list for calibration in "configs/calibration_images.txt".)
 ```shell
 $ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8
@@ -147,10 +147,10 @@ LightNet-TRT is built on the LightNet framework and integrates with TensorRT usi
 LightNet-TRT is a powerful and efficient implementation of CNNs using Edge AI. With its advanced features and integration with TensorRT, it is an excellent choice for real-time object detection and semantic segmentation applications on edge devices.
 
 # References
-[1]. [LightNet](https://github.com/daniel89710/lightNet)
-[2]. [TensorRT](https://developer.nvidia.com/tensorrt)
-[3]. [Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT](https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/)
-[4]. [NVDLA](http://nvdla.org/)
-[5]. [Achieving FP32 Accuracy for INT8 Inference Using Quantization Aware Training with NVIDIA TensorRT](https://developer.nvidia.com/blog/achieving-fp32-accuracy-for-int8-inference-using-quantization-aware-training-with-tensorrt/)
+[1]. [LightNet](https://github.com/daniel89710/lightNet)  
+[2]. [TensorRT](https://developer.nvidia.com/tensorrt)  
+[3]. [Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT](https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/)  
+[4]. [NVDLA](http://nvdla.org/)  
+[5]. [Achieving FP32 Accuracy for INT8 Inference Using Quantization Aware Training with NVIDIA TensorRT](https://developer.nvidia.com/blog/achieving-fp32-accuracy-for-int8-inference-using-quantization-aware-training-with-tensorrt/)  
 
 

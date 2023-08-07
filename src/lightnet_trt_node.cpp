@@ -14,8 +14,10 @@
 
 #include "lightnet_trt_node.hpp"
 
-LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions & node_options)
-: Node("tensorrt_lightnet", node_options), ipm_projector_(nullptr), base_frame_("base_link")
+LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions &node_options)
+: Node("tensorrt_lightnet", node_options),
+  ipm_projector_(nullptr),
+  base_frame_("base_link")
 {
   transform_listener_ = std::make_shared<tier4_autoware_utils::TransformListener>(this);
 
@@ -36,8 +38,8 @@ LightNetTensorRTNode::LightNetTensorRTNode(const rclcpp::NodeOptions & node_opti
   RCLCPP_INFO(this->get_logger(), "Finished loading YOLO");
 
   image_sub_ = image_transport::create_subscription(
-    this, "~/in/image", [this](const sensor_msgs::msg::Image::ConstSharedPtr msg) { onImage(msg); },
-    "raw", rmw_qos_profile_sensor_data);
+    this, "~/in/image", [this](const sensor_msgs::msg::Image::ConstSharedPtr msg) { onImage(msg); }, "raw",
+    rmw_qos_profile_sensor_data);
   camera_info_sub_ = this->create_subscription<sensor_msgs::msg::CameraInfo>(
     "~/in/camera_info", rclcpp::SensorDataQoS(),
     [this](const sensor_msgs::msg::CameraInfo::ConstSharedPtr msg) { onCameraInfo(msg); });
@@ -72,16 +74,14 @@ void LightNetTensorRTNode::onCameraInfo(const sensor_msgs::msg::CameraInfo::Cons
 {
   if (ipm_projector_ != nullptr) return;
   const Eigen::Matrix3f intrinsic = get_intrinsic_matrix(*msg);
-  const Eigen::Matrix3f intrinsic_resized =
-    resize_intrinsic_matrix(intrinsic, config_.width, config_.height);
+  const Eigen::Matrix3f intrinsic_resized = resize_intrinsic_matrix(intrinsic, config_.width, config_.height);
 
   const std::string camera_frame = msg->header.frame_id;
   geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_base2cam_ptr =
     transform_listener_->getLatestTransform(base_frame_, camera_frame);
   if (!tf_base2cam_ptr) return;
 
-  const Eigen::Matrix4f extrinsic =
-    tf2::transformToEigen(tf_base2cam_ptr->transform).matrix().cast<float>();
+  const Eigen::Matrix4f extrinsic = tf2::transformToEigen(tf_base2cam_ptr->transform).matrix().cast<float>();
   ipm_projector_ = std::make_unique<IPM>(intrinsic_resized, extrinsic, roi_x_, roi_y_);
   return;
 }
@@ -104,7 +104,8 @@ void LightNetTensorRTNode::onImage(const sensor_msgs::msg::Image::ConstSharedPtr
   image_pub_.publish(out_image.toImageMsg());
 
   // Post processing
-  if (!ipm_projector_) {
+  if (!ipm_projector_)
+  {
     RCLCPP_WARN(this->get_logger(), "IPM projector is not initialized.");
     return;
   }

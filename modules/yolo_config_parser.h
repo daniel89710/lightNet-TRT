@@ -28,12 +28,11 @@ SOFTWARE.
 
 #include "yolo.h"
 
+#include <ctime>
 #include <gflags/gflags.h>
 
-#include <ctime>
-
 // Init to be called at the very beginning to verify all config params are valid
-void yoloConfigParserInit(int argc, char ** argv);
+void yoloConfigParserInit(int argc, char** argv);
 
 NetworkInfo getYoloNetworkInfo();
 NetworkInfo getYoloNetworkInfo1();
@@ -41,27 +40,36 @@ NetworkInfo getYoloNetworkInfo2();
 std::string getDirectoryPath(void);
 std::string getVideoPath(void);
 int getCameraID(void);
-// InferParams getYoloInferParams();
-// uint64_t getSeed();
-// std::string getNetworkType();
-// std::string getPrecision();
-// std::string getTestImages();
-// std::string getTestImagesPath();
-// bool getDecode();
-// bool getDoBenchmark();
-// bool getViewDetections();
+//InferParams getYoloInferParams();
+//uint64_t getSeed();
+//std::string getNetworkType();
+//std::string getPrecision();
+//std::string getTestImages();
+//std::string getTestImagesPath();
+//bool getDecode();
+//bool getDoBenchmark();
+//bool getViewDetections();
 bool getSaveDetections();
 std::string getSaveDetectionsPath();
-// uint32_t getBatchSize();
-// bool getShuffleTestSet();
-bool get_dont_show_flg(void);
-bool get_prof_flg(void);
-std::vector<std::string> get_names(void);
-std::string get_dump_path(void);
-double get_score_thresh(void);
-bool get_multi_precision_flg(void);
-bool get_cuda_flg(void);
-std::string get_output_path(void);
-std::string get_target_label(void);
+//uint32_t getBatchSize();
+//bool getShuffleTestSet();
+bool
+get_dont_show_flg(void);
+bool
+get_prof_flg(void);
+std::vector<std::string>
+get_names(void);
+std::string
+get_dump_path(void);
+double
+get_score_thresh(void);
+bool
+get_multi_precision_flg(void);
+bool
+get_cuda_flg(void);
+std::string
+get_output_path(void);
+std::string
+get_target_label(void);
 
-#endif  //_YOLO_CONFIG_PARSER_
+#endif //_YOLO_CONFIG_PARSER_
