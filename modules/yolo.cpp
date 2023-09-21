@@ -11,6 +11,7 @@
 using namespace nvinfer1;
 REGISTER_TENSORRT_PLUGIN(DetectPluginCreator);
 
+std::vector<double> Timer::durations;
 
 Yolo::Yolo( const NetworkInfo& networkInfo, const InferParams& inferParams) :
   m_NetworkType(networkInfo.networkType),

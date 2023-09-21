@@ -1,0 +1,42 @@
+# MIT License
+
+# Copyright (c) 2018 NVIDIA CORPORATION. All rights reserved.
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+### This is a sample config file for yolo plugin and the trt-yolo-app
+# Statements starting with '#' are ignored.
+
+# The following 4 config params are required for yolo plugin and trt-yolo-app
+
+# network_type : Type of network architecture. Choose from yolov2, yolov2-tiny, yolov3 and yolov3-tiny
+# config_file_path  : Darknet cfg file
+# wts_file_path : Darknet weights file
+# labels_file_path : Text file with a list of object class labels
+
+--network_type=YOLOV3
+--config_file_path=../configs/yolov8x-BDD100K-640x640.cfg
+--wts_file_path=../configs/yolov8x-BDD100K-640x640.weights
+
+#Support kFLOAT/kHALF/kINT8
+--precision=kFLOAT
+
+#Support DLA for Xavier/Orin series
+#--dla=[0/1]
+#--mp=true
