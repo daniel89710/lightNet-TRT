@@ -47,24 +47,24 @@ LightNet-TRT also supports multitask execution, allowing the network to perform 
 1.  Clone the repository.
     
 ```shell
-$ git clone https://github.com/daniel89710/lightNet-TRT.git
-$ cd lightNet-TRT
+git clone https://github.com/daniel89710/lightNet-TRT.git
+cd lightNet-TRT
 ```
 	
 2.  Install libraries.
 						    
 ```shell
-$ sudo apt update
-$ sudo apt install libgflags-dev
-$ sudo apt install libboost-all-dev
+sudo apt update
+sudo apt install libgflags-dev
+sudo apt install libboost-all-dev
 ```
 										    
 3.  Compile the TensorRT implementation.
 											    
 ```shell
-$ mkdir build
-$ cmake ../
-$ make -j
+mkdir build
+cmake ../
+make -j 4
 ```
 
 ## Model	
@@ -84,35 +84,35 @@ $ make -j
 						
 Build FP32 engine
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kFLOAT
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kFLOAT
 ```
 
 Build FP16(HALF) engine
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kHALF
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kHALF
 ```
 
 Build INT8 engine 
 (You need to prepare a list for calibration in "configs/calibration_images.txt".)
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8
 ```
 
 Build DLA engine (Supported by only Xavier and Orin)
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8 --dla [0/1]
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision kINT8 --dla [0/1]
 ```
 
 ### Inference with the TensorRT engine
 
 Inference from images
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kFLOAT/kHALF/kINT8] {--dla [0/1]} --d DIRECTORY
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kFLOAT/kHALF/kINT8] {--dla [0/1]} --d DIRECTORY
 ```
 
 Inference from images
 ```shell
-$ ./lightNet-TRT --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kFLOAT/kHALF/kINT8] {--dla [0/1]} --d VIDEO
+./lightnet_trt --flagfile ../configs/lightNet-BDD100K-det-semaseg-1280x960.txt --precision [kFLOAT/kHALF/kINT8] {--dla [0/1]} --d VIDEO
 ```
 
 ### Inference with ROS 2 node
