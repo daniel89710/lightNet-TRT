@@ -71,5 +71,8 @@ std::string
 get_output_path(void);
 std::string
 get_target_label(void);
-
+bool
+get_lidar_flg(void);
+std::string
+get_depth_colormap(void);
 #endif //_YOLO_CONFIG_PARSER_

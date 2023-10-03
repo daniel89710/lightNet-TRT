@@ -8,9 +8,14 @@
 #include "yolo_config_parser.h"
 #include "preprocess.h"
 #include <omp.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "colormap.hpp"
+//#include <pcl/visualization/cloud_viewer.h>
+
 using namespace nvinfer1;
 REGISTER_TENSORRT_PLUGIN(DetectPluginCreator);
-
 
 Yolo::Yolo( const NetworkInfo& networkInfo, const InferParams& inferParams) :
   m_NetworkType(networkInfo.networkType),
@@ -176,6 +181,7 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
   std::vector<nvinfer1::ITensor*> tensorOutputs;
   uint32_t outputTensorCount = 0;
   uint32_t segmenter_count = 0;
+  uint32_t regression_count = 0;  
   int sparse = 0;
   float total_gflops = 0.0;
   long long int total_num_params = 0;
@@ -242,7 +248,11 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	      }	else if("logistic" == activation) {
                 out = netAddConvSigmoid(i, m_configBlocks.at(i), weights, trtWeights, weightPtr,
 					channels, previous, m_Network);	
-                layerType = "conv-logistic4";	
+                layerType = "conv-logistic4";
+	      } else if("relu" == activation) {
+                out = netAddConvRelu(i, m_configBlocks.at(i), weights, trtWeights, weightPtr,
+					channels, previous, m_Network);	
+                layerType = "conv-relu";			
 	      } else {
 		assert(1);
 	      }
@@ -288,6 +298,29 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	  tensorOutputs.push_back(ew->getOutput(0));
 	  printLayerInfo(layerIndex, "skip", inputVol, outputVol, "    -");
         }
+      else if (m_configBlocks.at(i).at("type") == "sam")
+        {
+	  //assert(m_configBlocks.at(i).at("activation") == "linear");
+	  assert(m_configBlocks.at(i).find("from") != m_configBlocks.at(i).end());
+	  int from = stoi(m_configBlocks.at(i).at("from"));
+
+	  std::string inputVol = dimsToString(previous->getDimensions());
+	  // check if indexes are correct
+	  assert((i - 2 >= 0) && (i - 2 < tensorOutputs.size()));
+	  assert((i + from - 1 >= 0) && (i + from - 1 < tensorOutputs.size()));
+	  assert(i + from - 1 < i - 2);
+	  nvinfer1::IElementWiseLayer* ew
+	    = m_Network->addElementWise(*tensorOutputs[i - 2], *tensorOutputs[i + from - 1],
+					nvinfer1::ElementWiseOperation::kPROD);
+	  assert(ew != nullptr);
+	  std::string ewLayerName = "sam_" + std::to_string(i);
+	  ew->setName(ewLayerName.c_str());
+	  previous = ew->getOutput(0);
+	  assert(previous != nullptr);
+	  std::string outputVol = dimsToString(previous->getDimensions());
+	  tensorOutputs.push_back(ew->getOutput(0));
+	  printLayerInfo(layerIndex, "sam", inputVol, outputVol, "    -");
+        }      
       else if (m_configBlocks.at(i).at("type") == "yolo")
         {
 	  std::string layerName;	    
@@ -341,29 +374,38 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	  std::string inputVol = dimsToString(previous->getDimensions());
 	  nvinfer1::Dims prevTensorDims = previous->getDimensions();
 	  assert((i - 2 >= 0) && (i - 2 < tensorOutputs.size()));
-	  auto *softmax 
-	    = m_Network->addSoftMax(*tensorOutputs[i - 2]);
-	  assert(softmax != nullptr);
-	  std::string softmaxLayerName = "segmenter_" + std::to_string(segmenter_count);
-	  softmax->setName(softmaxLayerName.c_str());
-	  previous = softmax->getOutput(0);
+	  std::string outputLayerName;	  
+	  if (m_configBlocks.at(i).find("argmax") != m_configBlocks.at(i).end()) {
+	    outputLayerName = "argmax_" + std::to_string(segmenter_count);
+	    previous->setName(outputLayerName.c_str());
+	    tensorOutputs.push_back(previous);
+	  } else {
+	      auto *softmax = m_Network->addSoftMax(*tensorOutputs[i - 2]);
+	      assert(softmax != nullptr);
+	      outputLayerName = "segmenter_" + std::to_string(segmenter_count);
+	      softmax->setName(outputLayerName.c_str());
+	      previous = softmax->getOutput(0);
+	      tensorOutputs.push_back(softmax->getOutput(0));
+	      previous->setName(outputLayerName.c_str());
+	  }
 	  
-
-
-	  previous->setName(softmaxLayerName.c_str());
 	  assert(previous != nullptr);
 	  m_Network->markOutput(*previous);
 	  std::string outputVol = dimsToString(previous->getDimensions());
-	  tensorOutputs.push_back(softmax->getOutput(0));
-	  //tensorOutputs.push_back(previous);	  
-	  printLayerInfo(layerIndex, "segmenter", inputVol, outputVol, "    -");
+
+	  //tensorOutputs.push_back(previous);
+	  if (m_configBlocks.at(i).find("argmax") != m_configBlocks.at(i).end()) {
+	    printLayerInfo(layerIndex, "argmax (dummy)", inputVol, outputVol, "    -");
+	  } else {
+	    printLayerInfo(layerIndex, "segmenter", inputVol, outputVol, "    -");
+	  }
 
 	  TensorInfo& curYoloTensor = m_OutputTensors.at(outputTensorCount);
 	  curYoloTensor.gridSize = prevTensorDims.d[2];
 	  curYoloTensor.grid_h = prevTensorDims.d[2];
 	  curYoloTensor.grid_w = prevTensorDims.d[3];
 	  curYoloTensor.numClasses = prevTensorDims.d[1];
-	  curYoloTensor.blobName = softmaxLayerName;
+	  curYoloTensor.blobName = outputLayerName;
 	  curYoloTensor.volume = curYoloTensor.grid_h
 	    * curYoloTensor.grid_w
 	    * curYoloTensor.numClasses;
@@ -390,7 +432,36 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	  }
 	  
 	  ++segmenter_count;
-        }	
+        }
+      else if (m_configBlocks.at(i).at("type") == "logistic")
+        {
+	  std::string inputVol = dimsToString(previous->getDimensions());
+	  nvinfer1::Dims prevTensorDims = previous->getDimensions();
+	  assert((i - 2 >= 0) && (i - 2 < tensorOutputs.size()));
+	  std::string logisticLayerName = "logistic_" + std::to_string(segmenter_count);
+	  
+
+	  previous->setName(logisticLayerName.c_str());
+	  tensorOutputs.push_back(previous);
+	  m_Network->markOutput(*previous);
+	  std::string outputVol = dimsToString(previous->getDimensions());
+	  //tensorOutputs.push_back(previous);	  
+	  printLayerInfo(layerIndex, "logistic", inputVol, outputVol, "    -");
+
+	  TensorInfo& curYoloTensor = m_OutputTensors.at(outputTensorCount);
+	  curYoloTensor.gridSize = prevTensorDims.d[2];
+	  curYoloTensor.grid_h = prevTensorDims.d[2];
+	  curYoloTensor.grid_w = prevTensorDims.d[3];
+	  curYoloTensor.numClasses = prevTensorDims.d[1];
+	  curYoloTensor.blobName = logisticLayerName;
+	  curYoloTensor.volume = curYoloTensor.grid_h
+	    * curYoloTensor.grid_w
+	    * curYoloTensor.numClasses;
+	  ++outputTensorCount;
+
+	  curYoloTensor.depth = true;	  	  
+	  ++regression_count;
+        }	      
       else if (m_configBlocks.at(i).at("type") == "route")
         {
 	  size_t found = m_configBlocks.at(i).at("layers").find(",");
@@ -522,6 +593,25 @@ void Yolo::createYOLOEngine(const nvinfer1::DataType dataType, Int8EntropyCalibr
 	  layerType += " : (" + std::to_string(gflops) + ")";	    
 	  printLayerInfo(layerIndex, layerType, inputVol, outputVol, std::to_string(weightPtr));
         }
+      else if (m_configBlocks.at(i).at("type") == "local_avgpool")
+        {
+	  // Add same padding layers
+	  float gflops = get_gflops(m_configBlocks.at(i), previous);
+	  if (m_configBlocks.at(i).at("size") == "2" && m_configBlocks.at(i).at("stride") == "1")
+            {
+              //  m_TinyMaxpoolPaddingFormula->addSamePaddingLayer("maxpool_" + std::to_string(i));
+            }
+	  std::string inputVol = dimsToString(previous->getDimensions());
+	  nvinfer1::ILayer* out = netAddAvgpool(i, m_configBlocks.at(i), previous, m_Network);
+	  previous = out->getOutput(0);
+	  assert(previous != nullptr);
+	  std::string outputVol = dimsToString(previous->getDimensions());
+	  tensorOutputs.push_back(out->getOutput(0));
+	  total_gflops += gflops;
+	  std::string layerType = "avgpool";
+	  layerType += " : (" + std::to_string(gflops) + ")";	    
+	  printLayerInfo(layerIndex, layerType, inputVol, outputVol, std::to_string(weightPtr));
+        }      
       else
         {
 	  std::cout << "Unsupported layer type --> \"" << m_configBlocks.at(i).at("type") << "\""
@@ -688,7 +778,7 @@ std::vector<BBoxInfo> Yolo::decodeDetections(const int& imageIdx,
 
   std::vector<BBoxInfo> binfo;
   for (auto& tensor : m_OutputTensors) {
-    if (!tensor.segmenter) {
+    if (!tensor.segmenter && !tensor.regression) {
       std::vector<BBoxInfo> curBInfo = decodeTensor(imageIdx, imageH, imageW, tensor);
       binfo.insert(binfo.end(), curBInfo.begin(), curBInfo.end());
     }
@@ -780,7 +870,7 @@ std::vector<cv::Mat> Yolo::get_colorlbl(std::vector<cv::Mat> &argmax) {
 std::vector<cv::Mat> Yolo::get_depthmap(std::vector<cv::Mat> &argmax) {
   std::vector<cv::Mat> segmentation;
   int count = 0;
-
+  std::string cFormat = get_depth_colormap();
   for (auto& tensor : m_OutputTensors) {
     if (tensor.segmenter && tensor.depth) {      
       cv::Mat gray = argmax[count];
@@ -796,25 +886,27 @@ std::vector<cv::Mat> Yolo::get_depthmap(std::vector<cv::Mat> &argmax) {
 	}
       }
       */
-      cv::Mat hsv = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);
+      cv::Mat mask = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);      
+      //      cv::Mat hsv = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);
       int c = tensor.numClasses;
       for (int y = 0; y < tensor.grid_h; y++) {
 	for (int x = 0; x < tensor.grid_w; x++) {
 	  int id = gray.at<unsigned char>(y, x);
 	  float rel = id/(float)c;
-	  //int tmp = 120 + 90 * (1.0-rel);
-	  //tmp = tmp > 60.0 ? 60.0 : tmp;
-	  int hue = 120 + 90 * (1.0-rel);
-	  hue = hue > 180 ?  (180-hue) * (-1) : hue;
-	  unsigned char val = 255 - 180 * (1.0-rel);
-	  //hue = hue < 300 ? 0 : hue;
-	  hsv.at<cv::Vec3b>(y, x)[0] = hue;
-	  hsv.at<cv::Vec3b>(y, x)[1] = 255;
-	  hsv.at<cv::Vec3b>(y, x)[2] = val;
+	  int distance = rel * MAX_DISTANCE;
+	  distance = distance >= MAX_DISTANCE ? MAX_DISTANCE-1 : distance;
+	  if (cFormat == "jet") {
+	    mask.at<cv::Vec3b>(y, x)[0] = jet_colormap[distance][0];
+	    mask.at<cv::Vec3b>(y, x)[1] = jet_colormap[distance][1];
+	    mask.at<cv::Vec3b>(y, x)[2] = jet_colormap[distance][2];
+	  } else {
+	    mask.at<cv::Vec3b>(y, x)[0] = magma_colormap[distance][2];
+	    mask.at<cv::Vec3b>(y, x)[1] = magma_colormap[distance][1];
+	    mask.at<cv::Vec3b>(y, x)[2] = magma_colormap[distance][0];
+	  }	  
 	}
       }
-      cv::Mat mask;
-      cv::cvtColor(hsv, mask, cv::COLOR_HSV2RGB);
+      //      cv::cvtColor(hsv, mask, cv::COLOR_HSV2RGB);      
       segmentation.push_back(mask);
     }
     if (tensor.segmenter) {
@@ -823,6 +915,485 @@ std::vector<cv::Mat> Yolo::get_depthmap(std::vector<cv::Mat> &argmax) {
   }
   return segmentation;
 }
+
+
+std::vector<cv::Mat> Yolo::get_depthmap_from_logistic(const int& imageIdx)
+{
+  std::vector<cv::Mat> segmentation;
+  int count = 0;
+  std::string cFormat = get_depth_colormap();
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {      
+      const float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      cv::Mat mask = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);
+      for (int y = 0; y < tensor.grid_h; y++) {
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float rel =  logistic[y * tensor.grid_w + x];
+	  int distance = rel * MAX_DISTANCE;
+	  distance = distance >= MAX_DISTANCE ? MAX_DISTANCE-1 : distance;
+	  if (cFormat == "jet") {
+	    mask.at<cv::Vec3b>(y, x)[0] = jet_colormap[distance][0];
+	    mask.at<cv::Vec3b>(y, x)[1] = jet_colormap[distance][1];
+	    mask.at<cv::Vec3b>(y, x)[2] = jet_colormap[distance][2];
+	  } else {
+	    mask.at<cv::Vec3b>(y, x)[0] = magma_colormap[distance][2];
+	    mask.at<cv::Vec3b>(y, x)[1] = magma_colormap[distance][1];
+	    mask.at<cv::Vec3b>(y, x)[2] = magma_colormap[distance][0];
+	  }
+	}
+      }
+      
+      segmentation.push_back(mask);
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+  return segmentation;
+}
+
+cv::Mat Yolo::get_bev_from_lidar(cv::Mat &rangeImg, cv::Mat &seg) {
+  int count = 0;
+  //  const float ux = 9.7006006e+02;
+  const float ux = 9.57379907e+02;  
+  const int im_w = rangeImg.cols;
+  const int im_h = rangeImg.rows;    
+  //const float ux = im_w/2.0;
+  //const float uy = im_h/2.0;
+  //  const float uy = 6.4523572e+02;
+  const float uy = 6.47327969e+02;  
+  const int seg_w = seg.cols;
+  const int seg_h = seg.rows;
+  const float scale_w = (float)(im_w) / (float)seg_w;
+  const float scale_h = (float)(im_h) / (float)seg_h;      
+  cv::Mat bev = cv::Mat::zeros(1280, 800, CV_8UC3);
+  for (int y = im_h-1; y >= 0; y--) {
+    for (int x = 0; x < im_w; x++) {
+      unsigned char d = rangeImg.at<cv::Vec3b>(y, x)[0];
+      if (!d) {
+	continue;
+      }
+      float distance = (255 - d) * 120.0 / 255.0;
+      //float x3d = ((x - ux) / 1.1763488e+03) * distance;
+      //float y3d = ((y - uy) / 1.2161204e+03) * distance;
+      //C1
+      float x3d = ((x - ux) / 1.43183880e+03) * distance;      
+      float y3d = ((y - uy) / 1.47166278e+03) * distance;      
+      float xx = x * scale_w;
+      float yy = y * scale_h;      
+      x3d = (x3d+20.0)*20;
+      if (x3d >= 800.0 || x3d < 0.0) {
+	continue;
+      }
+      if (y3d < -1.0) {	  	  
+	continue;
+      }
+      if (distance > 0.0 && distance < 100.0) {
+	for (int b = 0; b < 4; b++) {
+	  if ((1280-(int)(distance*12.8)-b) >= 0) {
+	    //bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[0] = 255;
+	    //bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[1] = 255;
+	    //bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[2] = 255;
+	    bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[0] = seg.at<cv::Vec3b>((int)yy,(int)xx)[0];
+	    bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[1] = seg.at<cv::Vec3b>((int)yy,(int)xx)[1];
+	    bev.at<cv::Vec3b>(1280-(int)(distance*12.8)-b,(int)((x3d)))[2] = seg.at<cv::Vec3b>((int)yy,(int)xx)[2];
+	  }
+	}
+      }
+    }
+  }
+  return bev;
+}
+
+void Yolo::get_backprojection(const int& imageIdx, int im_w, int im_h, cv::Mat &seg, std::vector<BBoxInfo> &binfos, cv::Mat &bev) {
+  int count = 0;
+  //C1
+  //const float ux = 9.57379907e+02;
+  //const float uy = 6.47327969e+02;  
+  //const float ux = 9.7006006e+02;
+  //const float uy = 6.4523572e+02;
+  const float ux = im_w/2.0;
+  const float uy = im_h/2.0;
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {
+      const float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      float scale_w = (float)(im_w) / (float)tensor.grid_w;
+      float scale_h = (float)(im_h) / (float)tensor.grid_h;      
+      //for (int y = tensor.grid_h*5/6; y > tensor.grid_h/3; y--) {
+      for (int y = tensor.grid_h*5/6; y > 0; y--) {      
+      //for (int y = tensor.grid_h-1; y > tensor.grid_h/3; y--) {      
+      //for (int y = tensor.grid_h-1; y > 0; y--) {            
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float rel =  logistic[y * tensor.grid_w + x];
+	  float distance = 120.0 * rel;
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  //C1
+	  float x3d = ((xx- ux) / 1.43183880e+03) * distance;      
+	  float y3d = ((yy - uy) / 1.47166278e+03) * distance;      	  
+	  //float x3d = ((xx - ux) / 1.1763488e+03) * distance;
+	  //float y3d = (yy - uy) / 1.2161204e+03 * distance;
+	  if (x3d > 20.0) {
+	    continue;
+	  }
+	  x3d = (x3d+20.0)*GRID_W/40.0;
+	  if (x3d > GRID_H || x3d < 0.0) {
+	    continue;
+	  }	  
+	  if (y3d < -2.5) {
+	    continue;
+	  }
+	  if (distance > 0.0 && distance < 100.0) {
+	    if (seg.at<cv::Vec3b>((int)yy,(int)xx)[0] == 0 && seg.at<cv::Vec3b>((int)yy,(int)xx)[1] == 0 && seg.at<cv::Vec3b>((int)yy,(int)xx)[2] == 0) {
+	      continue;
+	    }
+	    float gran_h = (float)GRID_H/100.0;
+	    for (int b = 0; b < 4; b++) {
+	      //for (int b = 0; b < 3; b++) {	    
+	      if ((GRID_H-(int)(distance*gran_h)-b) >= 0) {
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[0] = seg.at<cv::Vec3b>((int)yy,(int)xx)[0];
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[1] = seg.at<cv::Vec3b>((int)yy,(int)xx)[1];
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[2] = seg.at<cv::Vec3b>((int)yy,(int)xx)[2];
+	      }
+	    }
+	  }
+	}	
+      }
+
+      for (const auto &b : binfos) {
+	if (b.label > 7) {
+	  continue;
+	}
+	float x1 = b.box.x1;// * scale_w;
+	float y1 = b.box.y1-4;// * scale_h;
+	float x2 = b.box.x2;// * scale_w;
+	float y2 = b.box.y2-4;// * scale_h;
+	float c_x = (x1 + x2)/2.0;
+	float c_y = y2;//(int)(y1 + y2)/2.0;
+	float w = (x2-x1)/2;
+	int x = (int)(c_x * tensor.grid_w / (float)im_w);
+	int y = (int)(c_y * tensor.grid_h / (float)im_h);	
+	float rel =  logistic[y * tensor.grid_w + x];
+	float distance_c = 120.0 * rel;
+	float x3d_c = ((c_x - ux) / 1.1763488e+03) * distance_c;
+
+	c_y = (int)(y1 + y2)/2.0;
+	x = (int)(c_x * tensor.grid_w / (float)im_w);
+	y = (int)(c_y * tensor.grid_h / (float)im_h);	
+	rel =  logistic[y * tensor.grid_w + x];
+	distance_c = 120.0 * rel;
+	x3d_c = ((c_x - ux) / 1.1763488e+03) * distance_c;
+	//float y3d_c = (c_y - 6.4523572e+02) / 1.2161204e+03 * distance_c;
+	x3d_c = (x3d_c+20.0)*GRID_W/40;
+	float gran_h = (float)GRID_H/100.0;
+	cv::circle(bev, cv::Point((int)x3d_c, GRID_H-(int)(distance_c*gran_h)), 4, cv::Scalar(255,255,255), -1);	
+      }
+
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+}
+
+cv::Mat Yolo::get_heightmap(const int& imageIdx, int im_w, int im_h)
+{
+  int count = 0;
+  //C1
+  //const float ux = 9.57379907e+02;
+  //const float uy = 6.47327969e+02;  
+  //const float ux = 9.7006006e+02;
+  //const float uy = 6.4523572e+02;
+  const float ux = im_w/2.0;
+  const float uy = im_h/2.0;
+  const float max_height = 10.0;
+  cv::Mat mask;
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {
+      mask = cv::Mat::zeros(tensor.grid_h, tensor.grid_w, CV_8UC3);      
+      const float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      float scale_w = (float)(im_w) / (float)tensor.grid_w;
+      float scale_h = (float)(im_h) / (float)tensor.grid_h;      
+      //for (int y = tensor.grid_h*5/6; y > tensor.grid_h/3; y--) {
+      for (int y = tensor.grid_h-1; y > 0; y--) {      
+      //for (int y = tensor.grid_h-1; y > tensor.grid_h/3; y--) {      
+      //for (int y = tensor.grid_h-1; y > 0; y--) {            
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float rel =  logistic[y * tensor.grid_w + x];
+	  float distance = 120.0 * rel;
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  //C1
+	  float x3d = ((xx- ux) / 1.43183880e+03) * distance;      
+	  float y3d = ((yy - uy) / 1.47166278e+03) * distance;      	  
+	  //float x3d = ((xx - ux) / 1.1763488e+03) * distance;
+	  //float y3d = (yy - uy) / 1.2161204e+03 * distance;
+	  y3d += 1.5;
+	  y3d = y3d < 0.0 ? 0.0 : y3d;
+	  y3d = y3d > max_height ? max_height : y3d;
+	  int value = y3d / (float)max_height * 255;
+	  mask.at<cv::Vec3b>(y, x)[0] = jet_colormap[value][0];
+	  mask.at<cv::Vec3b>(y, x)[1] = jet_colormap[value][1];
+	  mask.at<cv::Vec3b>(y, x)[2] = jet_colormap[value][2];	  
+	}	
+      }
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+  return mask;
+}
+
+void Yolo::get_filtered_bev_from_logistic(const int& imageIdx, int im_w, int im_h, cv::Mat &seg, std::vector<BBoxInfo> &binfos, cv::Mat &bev) {
+  int count = 0;
+  //const float ux = 9.7006006e+02;
+  const float ux = im_w/2.0;
+
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {      
+      float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];  
+      for (const auto &b : binfos) {
+	if (b.label > 7) {
+	  //continue;
+	}
+	float x1 = b.box.x1;// * scale_w;
+	float y1 = b.box.y1;// * scale_h;
+	float x2 = b.box.x2;// * scale_w;
+	float y2 = b.box.y2;// * scale_h;
+	float c_x = (x1 + x2)/2.0;
+	float c_y = (int)(y1 + y2)/2.0;
+	//float c_y = (int)(y1 + y2)*2.0/3.0;	
+	float w = x2-x1;
+	for (int y = y1; y < c_y; y++) {
+	  for (int x = x1; x < x2; x++) {
+	    seg.at<cv::Vec3b>((int)y,(int)x)[0] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[1] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[2] = 0;	
+	  }
+	}
+	for (int y = y1; y < y2; y++) {
+	  for (int x = x1; x < x1+w*0.15; x++) {
+	    seg.at<cv::Vec3b>((int)y,(int)x)[0] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[1] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[2] = 0;	
+	  }
+	}
+	for (int y = y1; y < y2; y++) {
+	  for (int x = x2-w*0.15; x < x2; x++) {
+	    seg.at<cv::Vec3b>((int)y,(int)x)[0] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[1] = 0;
+	    seg.at<cv::Vec3b>((int)y,(int)x)[2] = 0;	
+	  }
+	}
+      }
+    }
+  }  
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {
+      float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      float scale_w = (float)(im_w) / (float)tensor.grid_w;
+      float scale_h = (float)(im_h) / (float)tensor.grid_h;      
+      //for (int y = 400; y < tensor.grid_h*4/5; y++) {
+      for (int y = tensor.grid_h-1; y > tensor.grid_h/3; y--) {
+	float sum = 0.0;
+	int count = 0;
+	std::vector<float> road;
+	//for (int x = 0; x < tensor.grid_w; x++) {
+	for (int x = tensor.grid_w/4; x < tensor.grid_w*3/4; x++) {	
+	  float val =  logistic[y * tensor.grid_w + x];
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  if (seg.at<cv::Vec3b>((int)yy,(int)xx)[0] == 128 &&
+	      seg.at<cv::Vec3b>((int)yy,(int)xx)[1] == 64 &&
+	      seg.at<cv::Vec3b>((int)yy,(int)xx)[2] == 128) {
+	    sum += val;
+	    count++;
+	    road.push_back(val);
+	  }
+	}
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  if (seg.at<cv::Vec3b>((int)yy,(int)xx)[0] == 128 &&
+	      seg.at<cv::Vec3b>((int)yy,(int)xx)[1] == 64 &&
+	      seg.at<cv::Vec3b>((int)yy,(int)xx)[2] == 128) {
+	    logistic[y * tensor.grid_w + x] = sum/(float)count;
+	    //logistic[y * tensor.grid_w + x] = road[road.size()/2];	    
+	  }	  
+	}	
+      }
+    }
+  }
+ 
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {
+      const float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      float scale_w = (float)(im_w) / (float)tensor.grid_w;
+      float scale_h = (float)(im_h) / (float)tensor.grid_h;      
+      for (int y = tensor.grid_h*5/6; y > tensor.grid_h/3; y--) {
+      //for (int y = tensor.grid_h-1; y > tensor.grid_h/3; y--) {      
+      //for (int y = tensor.grid_h-1; y > 0; y--) {            
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float rel =  logistic[y * tensor.grid_w + x];
+	  float distance = 120.0 * rel;
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  float x3d = ((xx - ux) / 1.1763488e+03) * distance;
+	  float y3d = (yy - 6.4523572e+02) / 1.2161204e+03 * distance;
+	  x3d = (x3d+20.0)*GRID_W/40.0;
+	  if (x3d >= GRID_H || x3d < 0.0) {
+	    continue;
+	  }	  
+	  if (y3d < -2.5) {
+	    //continue;
+	  }
+	  if (distance > 0.0 && distance < 100.0) {
+	    if (seg.at<cv::Vec3b>((int)yy,(int)xx)[0] == 0 && seg.at<cv::Vec3b>((int)yy,(int)xx)[1] == 0 && seg.at<cv::Vec3b>((int)yy,(int)xx)[2] == 0) {
+	      continue;
+	    }
+	    float gran_h = (float)GRID_H/100.0;
+	    //for (int b = 0; b < 1; b++) {
+	    for (int b = 0; b < 16; b++) {	    
+	      if ((GRID_H-(int)(distance*gran_h)-b) >= 0 && ((GRID_H-(int)(distance*gran_h)-b) < GRID_H)) {
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[0] = seg.at<cv::Vec3b>((int)yy,(int)xx)[0];
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[1] = seg.at<cv::Vec3b>((int)yy,(int)xx)[1];
+		bev.at<cv::Vec3b>(GRID_H-(int)(distance*gran_h)-b,(int)((x3d)))[2] = seg.at<cv::Vec3b>((int)yy,(int)xx)[2];
+	      }
+	    }
+	  }
+	}
+      }
+      for (const auto &b : binfos) {
+	if (b.label > 7) {
+	  continue;
+	}
+	float x1 = b.box.x1;// * scale_w;
+	float y1 = b.box.y1-4;// * scale_h;
+	float x2 = b.box.x2;// * scale_w;
+	float y2 = b.box.y2-4;// * scale_h;
+	float c_x = (x1 + x2)/2.0;
+	float c_y = y2;//(int)(y1 + y2)/2.0;
+	//	if (y2 < tensor.grid_h/3) {
+	if (y2 < 100) {	
+	  continue;
+	}
+	float w = (x2-x1)/2;
+	int x = (int)(c_x * tensor.grid_w / (float)im_w);
+	int y = (int)(c_y * tensor.grid_h / (float)im_h);	
+	float rel =  logistic[y * tensor.grid_w + x];
+	float distance_c = 120.0 * rel;
+	float x3d_c = ((c_x - ux) / 1.1763488e+03) * distance_c;
+	float y3d_c = (c_y - 6.4523572e+02) / 1.2161204e+03 * distance_c;
+	if (y3d_c < -10.0) {
+	  //	  continue;
+	}
+	c_y = (int)(y1 + y2)/2.0;
+	x = (int)(c_x * tensor.grid_w / (float)im_w);
+	y = (int)(c_y * tensor.grid_h / (float)im_h);	
+	rel =  logistic[y * tensor.grid_w + x];
+	distance_c = 120.0 * rel;
+	x3d_c = ((c_x - ux) / 1.1763488e+03) * distance_c;
+	//float y3d_c = (c_y - 6.4523572e+02) / 1.2161204e+03 * distance_c;
+	x3d_c = (x3d_c+20.0)*GRID_W/40;
+	float gran_h = (float)GRID_H/100.0;
+	int b_x0 = x3d_c-4;
+	b_x0 = b_x0 < 0 ? 0 : b_x0;
+	int b_x1 = x3d_c+4;
+	b_x1 = b_x1 > GRID_W ? GRID_W-1 : b_x1;
+	int b_y0 = GRID_H-(int)(distance_c*gran_h)-8;
+	b_y0 = b_y0 < 0 ? 0 : b_y0;
+	int b_y1 = GRID_H-(int)(distance_c*gran_h)+8;
+	b_y1 = b_y1 > GRID_H ? GRID_H-1 : b_y1;
+	
+	cv::rectangle(bev, cv::Point(b_x0,b_y0), cv::Point(b_x1,b_y1), cv::Scalar(255,255,255), cv::FILLED);
+	cv::circle(bev, cv::Point((int)x3d_c, GRID_H-(int)(distance_c*gran_h)), 4, cv::Scalar(255,255,255), -1);
+      }
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+}
+/*
+void viewerOneOff(pcl::visualization::PCLVisualizer& viewer)
+{
+  viewer.setBackgroundColor(0.2, 0.2, 0.2);
+  cout << "viewerOneOff" << std::endl;
+}
+
+// ビューワー起動中の毎フレーム実行される
+void viewerPsycho(pcl::visualization::PCLVisualizer& viewer)
+{
+  cout << "viewerPsycho" << std::endl;
+}
+
+void Yolo::visualize_vidar_with_pcl(const int& imageIdx, int im_w, int im_h, cv::Mat &seg)
+{
+  int count = 0;
+  //const float ux = 9.7006006e+02;
+  //const float uy = 6.4523572e+02;
+  const float ux = im_w/2.0;
+  const float uy = im_h/2.0;
+  
+  for (auto& tensor : m_OutputTensors) {
+    if (tensor.regression) {
+      pcl::PointCloud<pcl::PointXYZRGBA>::Ptr p_cloud(new pcl::PointCloud<pcl::PointXYZRGBA>);
+      pcl::visualization::CloudViewer viewer("PointCloudViewer");
+      viewer.showCloud(p_cloud);      
+      p_cloud->width = tensor.grid_w;
+      p_cloud->height = tensor.grid_h;
+      p_cloud->points.resize(p_cloud->width * p_cloud->height);
+      
+      const float* logistic = &tensor.hostBuffer[imageIdx * tensor.volume];
+      float scale_w = (float)(im_w) / (float)tensor.grid_w;
+      float scale_h = (float)(im_h) / (float)tensor.grid_h;      
+      //for (int y = tensor.grid_h*5/6; y > tensor.grid_h/3; y--) {
+      for (int y = tensor.grid_h-1; y >= 0; y--) {      
+      //for (int y = tensor.grid_h-1; y > tensor.grid_h/3; y--) {      
+      //for (int y = tensor.grid_h-1; y > 0; y--) {            
+	for (int x = 0; x < tensor.grid_w; x++) {
+	  float rel =  logistic[y * tensor.grid_w + x];
+	  float distance = 120.0 * rel;
+	  float xx = x * scale_w;
+	  float yy = y * scale_h;
+	  float x3d = ((xx - ux) / 1.1763488e+03) * distance;
+	  //float x3d = ((xx - ux) / 1.1763488e+03) * (distance+2.0);	  
+	  //float x3d = ((xx - ux) / 2.0763488e+03) * distance;	  
+	  float y3d = (yy - uy) / 1.2161204e+03 * distance;
+	  pcl::PointXYZRGBA &point = p_cloud->points[x + y * p_cloud->width];
+	  point.x = x*0.1;
+	  point.y = y*0.1;
+	  point.z = 0.0;	  
+	  point.r = 255;
+	  point.g = 0;
+	  point.b = 0;
+	  point.a = 0;
+
+	}	
+      }
+      
+      //      pcl::visualization::CloudViewer viewer("PointCloudViewer");
+      viewer.showCloud(p_cloud);
+
+      // ビューワー起動時の一回だけ呼ばれる関数をセット
+      viewer.runOnVisualizationThreadOnce(viewerOneOff);
+
+      // ビューワー起動中の毎フレーム実行される関数をセット
+      viewer.runOnVisualizationThread(viewerPsycho);
+
+      // ビューワー視聴用ループ
+      while (!viewer.wasStopped())
+	{
+
+	}
+    }
+    if (tensor.segmenter) {
+	count++;
+    }
+  }
+}
+*/
 
 std::vector<std::map<std::string, std::string>> Yolo::parseConfigFile(const std::string cfgFilePath)
 {
@@ -865,6 +1436,7 @@ std::vector<std::map<std::string, std::string>> Yolo::parseConfigFile(const std:
 void Yolo::parseConfigBlocks()
 {
   int segmenter_count = 0;
+  int regression_count = 0;  
   for (auto block : m_configBlocks) {
     if (block.at("type") == "net") {
       assert((block.find("height") != block.end())
@@ -964,6 +1536,12 @@ void Yolo::parseConfigBlocks()
       outputTensor.segmenter = true;
       m_OutputTensors.push_back(outputTensor);
       segmenter_count++;    
+    } else if (block.at("type") == "logistic") {
+      TensorInfo outputTensor;
+      outputTensor.blobName = "logistic_" + std::to_string(regression_count);
+      outputTensor.regression = true;
+      m_OutputTensors.push_back(outputTensor);
+      regression_count++;    
     }
   }
   
@@ -979,7 +1557,7 @@ void Yolo::allocateBuffers()
   for (auto& tensor : m_OutputTensors) {
     tensor.bindingIndex = m_Engine->getBindingIndex(tensor.blobName.c_str());
     assert((tensor.bindingIndex != -1) && "Invalid output binding index");
-    if (tensor.segmenter) {
+    if (tensor.segmenter || tensor.regression) {
       NV_CUDA_CHECK(cudaMalloc(&m_DeviceBuffers.at(tensor.bindingIndex),
 			       m_BatchSize * tensor.volume * sizeof(float)));
       NV_CUDA_CHECK(

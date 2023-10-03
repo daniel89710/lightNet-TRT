@@ -50,11 +50,10 @@ void Detector::segment(const std::vector<cv::Mat> &mat_image, std::string filena
   _impl->_detector.segment(mat_image, filename);
 }
 
-void Detector::get_mask(std::vector<cv::Mat> &mask_results)
+void Detector::regress(const std::vector<cv::Mat> &mat_image, std::vector<BatchResult> &vec_batch_result, std::string filename)
 {
-  _impl->_detector.get_mask(mask_results);
+  _impl->_detector.regress(mat_image, vec_batch_result, filename);
 }
-
 
 void Detector::draw_BBox(cv::Mat &img,Result result)
 {

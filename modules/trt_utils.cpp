@@ -491,6 +491,28 @@ nvinfer1::ILayer* netAddMaxpool(int layerIdx, std::map<std::string, std::string>
   return pool;
 }
 
+nvinfer1::ILayer* netAddAvgpool(int layerIdx, std::map<std::string, std::string>& block,
+                                nvinfer1::ITensor* input, nvinfer1::INetworkDefinition* network)
+{
+  assert(block.at("type") == "local_avgpool");
+  assert(block.find("size") != block.end());
+  assert(block.find("stride") != block.end());
+
+  int size = std::stoi(block.at("size"));
+  int stride = std::stoi(block.at("stride"));
+
+  nvinfer1::IPoolingLayer* pool
+    = network->addPoolingNd(*input, nvinfer1::PoolingType::kAVERAGE, nvinfer1::DimsHW{size, size});
+  assert(pool);
+  std::string maxpoolLayerName = "avgpool_" + std::to_string(layerIdx);
+  int pad = (size - 1) / 2;
+  pool->setPaddingNd(nvinfer1::DimsHW{pad,pad});
+  pool->setStrideNd(nvinfer1::DimsHW{stride, stride});
+  pool->setName(maxpoolLayerName.c_str());
+
+  return pool;
+}
+
 float calc_GFLOPS(std::map<std::string, std::string>& block,
 		  nvinfer1::ITensor* input)
 {
@@ -653,6 +675,88 @@ nvinfer1::ILayer* netAddConvSigmoid(int layerIdx, std::map<std::string, std::str
     }      
   }    
   return sig;
+}
+
+nvinfer1::ILayer* netAddConvRelu(int layerIdx, std::map<std::string, std::string>& block,
+				    std::vector<float>& weights,
+				    std::vector<nvinfer1::Weights>& trtWeights, int& weightPtr,
+				    int& inputChannels, nvinfer1::ITensor* input,
+				    nvinfer1::INetworkDefinition* network)
+{
+  assert(block.at("type") == "convolutional");
+  assert(block.find("batch_normalize") == block.end());
+  assert(block.at("activation") == "relu");
+  assert(block.find("filters") != block.end());
+  assert(block.find("pad") != block.end());
+  assert(block.find("size") != block.end());
+  assert(block.find("stride") != block.end());
+
+  int filters = std::stoi(block.at("filters"));
+  int padding = std::stoi(block.at("pad"));
+  int kernelSize = std::stoi(block.at("size"));
+  int stride = std::stoi(block.at("stride"));
+
+  int dilation = 1;
+  if (block.find("dilation") != block.end()) {
+    dilation = std::stoi(block.at("dilation"));
+  }    
+  int pad;
+  if (padding)
+    pad = (kernelSize - 1) / 2;
+  else
+    pad = 0;
+  // load the convolution layer bias
+  nvinfer1::Weights convBias{nvinfer1::DataType::kFLOAT, nullptr, filters};
+  float* val = new float[filters];
+  for (int i = 0; i < filters; ++i)
+    {
+      val[i] = weights[weightPtr];
+      weightPtr++;
+    }
+  convBias.values = val;
+  trtWeights.push_back(convBias);
+  // load the convolutional layer weights
+  int size = filters * inputChannels * kernelSize * kernelSize;
+  nvinfer1::Weights convWt{nvinfer1::DataType::kFLOAT, nullptr, size};
+  val = new float[size];
+  for (int i = 0; i < size; ++i)
+    {
+      val[i] = weights[weightPtr];
+      weightPtr++;
+    }
+  convWt.values = val;
+  trtWeights.push_back(convWt);
+  nvinfer1::IConvolutionLayer* conv = network->addConvolutionNd(
+								*input, filters, nvinfer1::DimsHW{kernelSize, kernelSize}, convWt, convBias);
+  assert(conv != nullptr);
+  std::string convLayerName = "conv_" + std::to_string(layerIdx);
+  //    conv->setName(convLayerName.c_str());
+  conv->setStrideNd(nvinfer1::DimsHW{stride, stride});
+  conv->setPadding(nvinfer1::DimsHW{pad, pad});
+  if (dilation > 1) {
+    conv->setDilationNd(nvinfer1::DimsHW{dilation, dilation});
+  }
+    
+  //    sigmoid
+  auto relu = network->addActivation(*conv->getOutput(0), nvinfer1::ActivationType::kRELU);
+  assert(relu != nullptr);
+  relu->setName(convLayerName.c_str());
+
+  if (block.find("precision") != block.end()) {
+    std::string precision = block.at("precision");
+    if (get_multi_precision_flg()) {
+      if (precision == "fp16") {
+	conv->setPrecision(nvinfer1::DataType::kHALF);
+	relu->setPrecision(nvinfer1::DataType::kHALF);	  
+	std::cout << "Set kHALF in " << std::endl; 
+      } else if (precision == "fp32") {
+	conv->setPrecision(nvinfer1::DataType::kFLOAT);
+	relu->setPrecision(nvinfer1::DataType::kFLOAT);	  	  
+	std::cout << "Set kFLOAT in " << std::endl; 
+      }
+    }      
+  }    
+  return relu;
 }
 
 nvinfer1::ILayer* net_conv_bn_mish(int layerIdx, 

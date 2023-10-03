@@ -110,6 +110,12 @@ DEFINE_bool(cuda, false,
 DEFINE_string(target, "",
               "[OPTIONAL] Target Finder");
 
+DEFINE_bool(lidar, false,
+            "[OPTIONAL] Flag to range-image based liar perception");
+
+DEFINE_string(depth, "magma",
+              "[OPTIONAL] Depth color format (magma/jet)");
+
 static bool isFlagDefault(std::string flag) { return flag == "not-specified" ? true : false; }
 
 static bool networkTypeValidator(const char* flagName, std::string value)
@@ -294,4 +300,16 @@ std::string
 get_target_label(void)
 {
   return FLAGS_target;
+}
+
+bool
+get_lidar_flg(void)
+{
+  return FLAGS_lidar;
+}
+
+std::string
+get_depth_colormap(void)
+{
+  return FLAGS_depth;
 }

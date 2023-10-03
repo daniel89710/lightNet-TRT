@@ -121,7 +121,8 @@ int main(int argc, char** argv)
   if (directory != "") {
     for (const auto & file : std::filesystem::directory_iterator(directory)) {
       std::cout << file.path() << std::endl;
-      cv::Mat src = cv::imread(file.path(), cv::IMREAD_UNCHANGED);
+      //      cv::Mat src = cv::imread(file.path(), cv::IMREAD_UNCHANGED);
+      cv::Mat src = cv::imread(file.path());//, cv::IMREAD_COLOR);      
       fs::path p (file.path());
       std::string name = p.filename().string();
       
@@ -131,8 +132,9 @@ int main(int argc, char** argv)
 	batch_img.push_back(src);
       }      
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img, name);    
-
+      detector->segment(batch_img, name);
+      detector->regress(batch_img, batch_res, name);          
+      
       if (dumpPath != "not-specified") {
 	fs::path p (file.path());
 	std::string filename = p.filename().string();
@@ -160,23 +162,29 @@ int main(int argc, char** argv)
 	}
       }
       //disp
-      if (dont_show == true) {
-	continue;
-      }
       for (int i=0;i<batch_img.size();++i) {
 	for (const auto &r : batch_res[i]) {
 	  //	  std::cout <<"batch "<<i<< " id:" << r.id << " prob:" << r.prob << " rect:" << r.rect << std::endl;
 	  detector->draw_BBox(batch_img[i], r);
 	}
-	// cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
-	// cv::imshow("image"+std::to_string(i), batch_img[i]);
+	if (dont_show == true) {
+	  continue;
+	}	
+	cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
+	cv::imshow("image"+std::to_string(i), batch_img[i]);
 	int k = cv::waitKey(0);
 	if (k == 32) {
+	  cv::Mat tmp = cv::imread(file.path(), cv::IMREAD_UNCHANGED);
 	  std::cout << "Save... " << name << std::endl;
-	  detector->save_image(src, "log/", name);
+	  detector->save_image(tmp, "log/", name);
 	  cv::waitKey(0);
 	}
       }
+      if (flg_save) {
+	fs::path p = save_path;
+	p.append("detections");
+	detector->save_image(batch_img[0], p.string(), name);
+      }            
     }
   } else if (videoPath != "" || cam_id != -1){
     std::cout << videoPath << std::endl;
@@ -188,14 +196,28 @@ int main(int argc, char** argv)
     }
     cv::Mat frame;
     int count = 0;
+    cv::namedWindow("image" + std::to_string(0), cv::WINDOW_AUTOSIZE);
     while (1) {
       video >> frame;
       if (frame.empty() == true) break;
 
       std::vector<cv::Mat> batch_img;
       batch_img.push_back(frame);
+
+      if (cam_id != -1 && flg_save) {      
+	std::ostringstream sout;
+	sout << std::setfill('0') << std::setw(6) << count;	  
+	std::string name = "frame_" + sout.str() + ".jpg";
+	fs::path p = save_path;	
+	p.append("JPEGImages");
+	fs::create_directory(p);
+	std::cout << "Save... " << name << std::endl;
+	detector->save_image(frame, p.string(), name);
+      }
+      
       detector->detect(batch_img, batch_res, cuda);
-      detector->segment(batch_img, "");    
+      detector->segment(batch_img, "");
+      detector->regress(batch_img, batch_res, "");          
 
       //disp
       for (int i=0;i<batch_img.size();++i) {
@@ -204,13 +226,15 @@ int main(int argc, char** argv)
 	  detector->draw_BBox(batch_img[i], r);
 	}
 	if (!dont_show) {
-	  cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
+	  //cv::namedWindow("image" + std::to_string(i), cv::WINDOW_NORMAL);
+	  //cv::namedWindow("image" + std::to_string(i), cv::WINDOW_KEEPRATIO);
+	  //cv::ResizeWindow("image" + std::to_string(i), 960, 640); 
 	  cv::imshow("image"+std::to_string(i), batch_img[i]);
 	}
 	if (flg_save) {
 	  std::ostringstream sout;
 	  sout << std::setfill('0') << std::setw(6) << count;	  
-	  std::string name = "frame_" + sout.str() + ".png";
+	  std::string name = "frame_" + sout.str() + ".jpg";
 	  fs::path p = save_path;
 	  p.append("detections");
 	  detector->save_image(batch_img[i], p.string(), name);

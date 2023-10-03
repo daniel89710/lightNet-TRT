@@ -26,6 +26,17 @@ namespace fs = boost::filesystem;
 
 static int GLOBAL_COUNTER = 0;
 
+std::string replaceOtherStr(std::string &replacedStr, std::string from, std::string to) {
+  const unsigned int pos = replacedStr.find(from);
+  const int len = from.length();
+
+  if (pos == std::string::npos || from.empty()) {
+    return replacedStr;
+  }
+
+  return replacedStr.replace(pos, len, to);
+}
+
 class YoloDectector
 {
 public:
@@ -78,8 +89,10 @@ public:
       cv::putText(img, stream.str(), cv::Point(result.rect.x, result.rect.y - 5), 0, 0.5, cv::Scalar(colormap[3*id+2], colormap[3*id+1], colormap[3*id+0]), 1);
     } else {
       cv::putText(img, stream.str(), cv::Point(result.rect.x, result.rect.y - 5), 0, 0.5, cv::Scalar(255, 0, 0), 1);
-    } 
-  }
+    }
+
+    
+  } 
 
   void segment(const std::vector<cv::Mat> &vec_image, std::string filename)
   {
@@ -94,49 +107,187 @@ public:
       int width = curImage.cols;
       
       for (uint32_t j = 0; j < mask.size(); j++) {
-				cv::Mat resized;
-				
-				cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);	
-				cv::addWeighted(vec_image[i], 1.0, resized, 0.5, 0.0, vec_image[i]);
-				
-				cv::namedWindow("mask" + std::to_string(j), cv::WINDOW_NORMAL);
-				cv::imshow("mask"+std::to_string(j), mask[j]);
-				if (flg_save) {
-					fs::path p = save_path;
-					p.append("segmentation");
-					fs::create_directory(p);
-					p.append(std::to_string(j));
-					fs::create_directory(p);
-					if (0) {
-						//get filenames;
-					} else {
-						std::ostringstream sout;
-						sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
-						//cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
-						if (filename == "") {
-							std::string filename = "frame_" + sout.str() + ".png";
-						}
-						save_image(resized, p.string(), filename);
-					}
-				}
-				auto depthmap = _p_net->get_depthmap(segmentation);
-				for (uint32_t j = 0; j < depthmap.size(); j++) {
-					cv::imshow("depthmap"+std::to_string(j), depthmap[j]);
-				}
-			}
-			if (i > 0) {
-				GLOBAL_COUNTER++;
-			}
-		}
+	cv::Mat resized;
+	
+	cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	if (get_lidar_flg()) {
+	  cv::Mat bev = _p_net->get_bev_from_lidar(curImage, resized);
+	  cv::imshow("bev", bev);
+	  if (flg_save) {
+	    fs::path p = save_path;
+	    p.append("bev");
+	    fs::create_directory(p);
+	    p.append(std::to_string(j));
+	    fs::create_directory(p);
+	    if (0) {
+	      //get filenames;
+	    } else {
+	      //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	      if (filename == "") {
+		std::ostringstream sout;
+		sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;	      
+		filename = "frame_" + sout.str() + ".png";
+	      }
+	      std::cout << filename << std::endl;
+	      save_image(bev, p.string(), filename);
+	    }	  
+	  }	  
+	}	
+	cv::addWeighted(vec_image[i], 1.0, resized, 0.5, 0.0, vec_image[i]);
+	
+	cv::namedWindow("mask" + std::to_string(j), cv::WINDOW_NORMAL);
+	cv::imshow("mask"+std::to_string(j), mask[j]);
+	if (flg_save) {
+	  fs::path p = save_path;
+	  p.append("segmentation");
+	  fs::create_directory(p);
+	  p.append(std::to_string(j));
+	  fs::create_directory(p);
+	  if (0) {
+	    //get filenames;
+	  } else {
+	    std::ostringstream sout;
+	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	    if (filename == "") {
+	      filename = "frame_" + sout.str() + ".png";
+	    }
+	    if (filename.find(".jpg") != std::string::npos) {
+	      replaceOtherStr(filename, ".jpg", ".png");
+	    }
+	    std::cout << filename << std::endl;
+	    save_image(resized, p.string(), filename);
+	  }
+	}
+	auto depthmap = _p_net->get_depthmap(segmentation);
+	for (uint32_t j = 0; j < depthmap.size(); j++) {
+	  cv::imshow("depthmap"+std::to_string(j), depthmap[j]);
+	}
+	      
+      }
+      if (i > 0) {
+	GLOBAL_COUNTER++;
+      }
+    }
     GLOBAL_COUNTER++;
-  } 
 
-  void get_mask(std::vector<cv::Mat> &mask_results)
-  {
-		auto segmentation = _p_net->apply_argmax(0);
-		mask_results = _p_net->get_colorlbl(segmentation);
-    GLOBAL_COUNTER++;
   }
+
+  void regress(const std::vector<cv::Mat> &vec_image,  std::vector<BatchResult> &vec_batch_result,  std::string filename)
+  {
+    bool flg_save = getSaveDetections();
+    std::string save_path = getSaveDetectionsPath();
+
+    for (uint32_t i = 0; i < vec_image.size(); ++i) {
+      auto curImage = vec_image.at(i);
+      std::vector<Result> &results = vec_batch_result[i];
+      std::vector<BBoxInfo> binfos;
+      for (const auto &r : results) {
+	BBoxInfo binfo;
+	binfo.label = r.id;
+	binfo.box.x1 = r.rect.x;
+	binfo.box.y1 = r.rect.y;
+	binfo.box.x2 = r.rect.x+r.rect.width;
+	binfo.box.y2 = r.rect.y+r.rect.height;	  	  
+	binfos.push_back(binfo);
+      }
+      auto segmentation = _p_net->apply_argmax(i);
+      auto seg = _p_net->get_colorlbl(segmentation);      
+      auto mask = _p_net->get_depthmap_from_logistic(i);
+
+      int height = curImage.rows;
+      int width = curImage.cols;
+      cv::Mat resized;
+      cv::Mat bev = cv::Mat::zeros(GRID_H, GRID_W, CV_8UC3);
+      cv::Mat filtered_bev = cv::Mat::zeros(GRID_H, GRID_W, CV_8UC3);
+      cv::Mat height_map;
+      for (uint32_t j = 0; j < seg.size(); j++) {
+	cv::resize(seg[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);	  
+	_p_net->get_backprojection(i, width, height, resized, binfos, bev);
+	height_map = _p_net->get_heightmap(i, width, height);
+	//_p_net->get_filtered_bev_from_logistic(i, width, height, resized, binfos, filtered_bev);
+	//_p_net->visualize_vidar_with_pcl(i, width, height, resized);	
+      }
+      for (uint32_t j = 0; j < mask.size(); j++) {
+	cv::namedWindow("depth" + std::to_string(j), cv::WINDOW_NORMAL);
+	cv::imshow("depth"+std::to_string(j), mask[j]);
+	cv::namedWindow("bev" + std::to_string(j), cv::WINDOW_NORMAL);
+	cv::imshow("bev"+std::to_string(j), bev);
+	//cv::namedWindow("filtered_bev" + std::to_string(j), cv::WINDOW_NORMAL);
+	//cv::imshow("filtered_bev"+std::to_string(j), filtered_bev);
+	cv::namedWindow("height_map" + std::to_string(j), cv::WINDOW_NORMAL);
+	cv::imshow("height_map"+std::to_string(j), height_map);		
+	
+	if (flg_save) {
+	  cv::Mat resized;
+	  cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);		  
+	  fs::path p = save_path;
+	  p.append("depth");
+	  fs::create_directory(p);
+	  p.append(std::to_string(j));
+	  fs::create_directory(p);
+	  if (0) {
+	    //get filenames;
+	  } else {
+	    std::ostringstream sout;
+	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	    if (filename == "") {
+	      filename = "frame_" + sout.str() + ".png";
+	    }
+	    std::cout << filename << std::endl;
+	    save_image(resized, p.string(), filename);
+	  }
+	}
+	if (flg_save) {
+	  fs::path p = save_path;
+	  p.append("vidar");
+	  fs::create_directory(p);
+	  p.append(std::to_string(j));
+	  fs::create_directory(p);
+	  if (0) {
+	    //get filenames;
+	  } else {
+	    std::ostringstream sout;
+	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	    if (filename == "") {
+	      filename = "frame_" + sout.str() + ".png";
+	    }
+	    if (filename.find(".jpg") != std::string::npos) {
+	      replaceOtherStr(filename, ".jpg", ".png");
+	    }
+	    std::cout << filename << std::endl;	    
+	    save_image(bev, p.string(), filename);
+	  }	  
+	}
+	if (flg_save) {
+	  fs::path p = save_path;
+	  p.append("height_map");
+	  fs::create_directory(p);
+	  p.append(std::to_string(j));
+	  fs::create_directory(p);
+	  if (0) {
+	    //get filenames;
+	  } else {
+	    std::ostringstream sout;
+	    sout << std::setfill('0') << std::setw(6) << GLOBAL_COUNTER;
+	    //cv::resize(mask[j], resized, cv::Size(width, height), 0, 0, cv::INTER_NEAREST);
+	    if (filename == "") {
+	      filename = "frame_" + sout.str() + ".png";
+	    }
+	    if (filename.find(".jpg") != std::string::npos) {
+	      replaceOtherStr(filename, ".jpg", ".png");
+	    }   	    
+	    std::cout << filename << std::endl;
+	    save_image(height_map, p.string(), filename);
+	  }	  
+	}	
+
+      }
+    }
+
+  }   
 
   void dump_profiling(){
     _p_net->print_profiling();    
@@ -174,10 +325,14 @@ public:
 	auto curImage = vec_ds_images.at(i);
 	auto binfo = _p_net->decodeDetections(i, curImage.getImageHeight(), curImage.getImageWidth());
 	//	auto segmentation = _p_net->apply_argmax(i, curImage.getImageHeight(), curImage.getImageWidth());
+	/*
 	auto remaining = nmsAllClasses(_p_net->getNMSThresh(),
 				       binfo,
 				       _p_net->getNumClasses(),
 				       _vec_net_type[_config.net_type]);
+	*/
+	auto remaining = nonMaximumSuppression(0.4,
+					       binfo);
 	if (remaining.empty())
 	  {
 	    continue;

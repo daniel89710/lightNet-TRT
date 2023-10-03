@@ -100,6 +100,7 @@ struct TensorInfo
   int bindingIndex{-1};
   float* hostBuffer{nullptr};
   bool segmenter{false};
+  bool regression{false};  
   std::vector<uint32_t> colormap;
   std::vector<std::string> names;
   bool depth;
@@ -126,7 +127,13 @@ public:
 					 const int& imageW);
   std::vector<cv::Mat> apply_argmax(const int& imageIdx);
   std::vector<cv::Mat> get_colorlbl(std::vector<cv::Mat> &argmax);
-  std::vector<cv::Mat> get_depthmap(std::vector<cv::Mat> &argmax) ;  
+  std::vector<cv::Mat> get_depthmap(std::vector<cv::Mat> &argmax) ;
+  std::vector<cv::Mat> get_depthmap_from_logistic(const int& imageIdx) ;
+  cv::Mat get_bev_from_lidar(cv::Mat &rangeImg, cv::Mat &seg);  
+  void get_backprojection(const int& imageIdx, int im_w, int im_h, cv::Mat &seg, std::vector<BBoxInfo> &binfos, cv::Mat &bev);
+  cv::Mat get_heightmap(const int& imageIdx, int im_w, int im_h);  
+  void get_filtered_bev_from_logistic(const int& imageIdx, int im_w, int im_h, cv::Mat &seg, std::vector<BBoxInfo> &binfos, cv::Mat &bev);
+  void visualize_vidar_with_pcl(const int& imageIdx, int im_w, int im_h, cv::Mat &seg);
   uint32_t *get_detection_colormap(void);
   std::vector<std::string> get_detection_names(int id);
   void print_profiling();  
@@ -312,4 +319,6 @@ private:
 	int _n_yolo_ind = 0;
 };
 
+#define GRID_H 600
+#define GRID_W 400
 #endif // _YOLO_H_
